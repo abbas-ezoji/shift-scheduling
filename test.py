@@ -5,7 +5,7 @@ import pyodbc
 from sklearn.preprocessing import scale, normalize, minmax_scale
 
 '''
-            <<<<Shift Recommandeation by Genetic Algorithm>>>>            
+            <<<<Shift Recommendation by Genetic Algorithm>>>>            
     - Create initial gene by pivot table
     - Fetch Personnel, Shift and WorkSection Requirements Info
 '''
