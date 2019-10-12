@@ -55,13 +55,14 @@ query_shift = '''SELECT [Code]
                           ,[Type]
                       FROM [Didgah_Timekeeper_DM].[dbo].[Shifts]
                    '''
-shfit_df = pd.read_sql(query_shift,sql_conn)
-shfit_df = shfit_df.set_index('Code')
+shift_df = pd.read_sql(query_shift,sql_conn)
+shift_df = shift_df.set_index('Code')
 
 # -----------------------Randomize gene---------------------------------------#
 for col in chromosom_df.columns :       
     chromosom_df[col] = chromosom_df.apply(
-                        lambda row : int(np.random.choice(shfit_df.index.values, 1))
+                        lambda row : int(np.random.choice(shift_df.index.values
+                                                          , 1))
                         ,axis=1)
 # -----------------------Randomize gene---------------------------------------# 
 ga = ga.GeneticAlgorithm(chromosom_df,
@@ -73,8 +74,24 @@ ga = ga.GeneticAlgorithm(chromosom_df,
                          maximise_fitness=False)
 
 def fitness (individual, data):
-    w = np.random.randint(0,100)
-    return w
+    prs_count,day_count = data.shape
+    shift_prs = personnel_df.reset_index()
+    shift_prs['diff'] = 0
+    prs_count = 0
+    shift_lenght_diff = 0
+    for prs in personnel_df.index: 
+        shift_lenght = 0        
+        for day in range(day_count):
+            shift_lenght += int(shift_df.loc[int(data.loc[prs][[day+1]])][1])        
+        shift_prs.at[prs_count,4] = shift_lenght
+        shift_prs.at[prs_count,7] = abs(shift_prs.iloc[prs_count][4] 
+                                      - shift_prs.iloc[prs_count][3])
+        shift_lenght_diff += shift_prs.iloc[prs_count][7]
+#        print(shift_prs.iloc[prs_count][7])
+        prs_count += 1 
+    
+    print(shift_lenght_diff)                  
+    return shift_lenght_diff
 
 ga.fitness_function = fitness               # set the GA's fitness function
 ga.run()                                    # run the GA
@@ -86,7 +103,6 @@ year_workingperiod = 1398 * 100 + 3
 prs_count,day_count = chromosom_df.shape                      
 cursor.execute('''truncate table PersonnelShiftDateAssignments''')
 
-prs_count = 0
 for prs in personnel_df.index:
     prs_count = prs_count + 1
     for day in range(day_count): 
