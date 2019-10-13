@@ -29,7 +29,6 @@ query_gene = '''SELECT
                   Dim_Date D ON D.PersianYear = 1398 AND PersianMonth=3
             '''
 chromosom_df = pd.read_sql(query_gene, sql_conn)
-chromosom_df.head(3)
 chromosom_df = pd.pivot_table(chromosom_df, values='SHIFTID', 
                               index=['PersonnelBaseId'],
                               columns=['PersianDayOfMonth'], aggfunc=np.sum)
@@ -80,17 +79,21 @@ def fitness (individual, data):
     prs_count = 0
     shift_lenght_diff = 0
     for prs in personnel_df.index: 
-        shift_lenght = 0        
+        shift_lenght = 0  
+        print('prs: ' + str(prs))
         for day in range(day_count):
-            shift_lenght += int(shift_df.loc[int(data.loc[prs][[day+1]])][1])        
-        shift_prs.at[prs_count,4] = shift_lenght
-        shift_prs.at[prs_count,7] = abs(shift_prs.iloc[prs_count][4] 
-                                      - shift_prs.iloc[prs_count][3])
-        shift_lenght_diff += shift_prs.iloc[prs_count][7]
-#        print(shift_prs.iloc[prs_count][7])
+            shift_lenght += int(shift_df.loc[int(data.loc[prs][[day+1]])][1])             
+                
+        shift_prs.set_value(prs_count,4,shift_lenght)
+        shift_prs.set_value(prs_count,7,
+                            abs(shift_prs.iloc[prs_count][4] - 
+                                shift_prs.iloc[prs_count][3])
+                            )        
         prs_count += 1 
-    
-    print(shift_lenght_diff)                  
+        print('shift_lenght: ' + str(shift_lenght))
+        
+    shift_lenght_diff = shift_prs.mean(axis=0)[7]
+    print('shift_lenght: ' + str(shift_lenght_diff))
     return shift_lenght_diff
 
 ga.fitness_function = fitness               # set the GA's fitness function
