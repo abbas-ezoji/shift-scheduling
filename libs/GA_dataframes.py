@@ -36,6 +36,7 @@ class GeneticAlgorithm(object):
 
     def __init__(self,
                  seed_data,
+                 meta_data,
                  population_size=50,
                  generations=100,
                  crossover_probability=0.8,
@@ -54,6 +55,7 @@ class GeneticAlgorithm(object):
         """
 
         self.seed_data = seed_data
+        self.meta_data = meta_data
         self.population_size = population_size
         self.generations = generations
         self.crossover_probability = crossover_probability
@@ -63,8 +65,11 @@ class GeneticAlgorithm(object):
 
         self.current_generation = []
 
-        def create_individual(data):            
-            individual = data.sample(frac=1)
+        def create_individual(data,meta_data):  
+            individual = data[:]
+            for col in individual.columns :       
+                individual[col] = np.random.choice(meta_data.index.values.tolist(),
+                                                   size=len(individual))
             return individual
 
         def crossover(parent_1, parent_2):                       
@@ -115,7 +120,7 @@ class GeneticAlgorithm(object):
         """
         initial_population = []
         for _ in range(self.population_size):
-            genes = self.create_individual(self.seed_data)
+            genes = self.create_individual(self.seed_data,self.meta_data)            
             individual = Chromosome(genes)
             initial_population.append(individual)
         self.current_generation = initial_population
@@ -126,7 +131,7 @@ class GeneticAlgorithm(object):
         """
         for individual in self.current_generation:
             individual.fitness = self.fitness_function(
-                individual.genes, self.seed_data)
+                individual.genes, self.meta_data)
 
     def rank_population(self):
         """Sort the population by fitness according to the order defined by
