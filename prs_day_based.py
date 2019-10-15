@@ -59,10 +59,9 @@ shift_df = pd.read_sql(query_shift,sql_conn)
 shift_df = shift_df.set_index('Code')
 
 # -----------------------Randomize gene---------------------------------------#
-for col in chromosom_df.columns :       
-    chromosom_df[col] = np.random.choice(shift_df.index.values.tolist(),size=len(chromosom_df))
-
-
+for prs in chromosom_df.index :       
+    chromosom_df.loc[prs] = np.random.choice(shift_df.index.values.tolist(),
+                                             size=len(chromosom_df.columns))
 # -----------------------fitness function-------------------------------------# 
 def fitness (individual, meta_data):
     prs_count,day_count = individual.shape    
@@ -85,15 +84,14 @@ def fitness (individual, meta_data):
         prs_count += 1 
         
     cost = np.mean(shift_lenght_diff)
-    print('cost: ' + str(cost))
+#    print('cost: ' + str(cost))
     return cost    
-
 
 # -----------------------Define GA--------------------------------------------# 
  
 ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
-                          population_size=2,
+                          population_size=20,
                           generations=10,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
@@ -120,7 +118,7 @@ for prs in personnel_df.index:
         cursor.execute('''insert into PersonnelShiftDateAssignments 
                        values (?, ?, ?, ?, ?)'''
                        ,(prs,int(sol_df.loc[prs][[day+1]])
-                       ,year_workingperiod * 100 + day+1,0,0)
+                       ,year_workingperiod * 100 + day+1,0,sol_fitness)
                        )
  
 sql_conn.commit()                     

@@ -139,7 +139,7 @@ class GeneticAlgorithm(object):
         """
         self.current_generation.sort(
             key=attrgetter('fitness'), reverse=self.maximise_fitness)
-        #print(self.current_generation[0].fitness)
+        print('best cost: ' + str(self.current_generation[0].fitness))
 
     def create_new_population(self):
         """Create a new population using the genetic operators (selection,
@@ -197,7 +197,7 @@ class GeneticAlgorithm(object):
         self.create_first_generation()
 
         for g in range(1, self.generations):
-            #print(g)
+            print('generation: ' +str(g))
             self.create_next_generation()
 
     def best_individual(self):
