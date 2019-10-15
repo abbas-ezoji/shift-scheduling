@@ -4,6 +4,7 @@ import pyodbc
 from libs import GA_dataframes as ga
 from sklearn.preprocessing import scale, normalize, minmax_scale
 
+
 '''
             <<<<Shift Recommandeation by Genetic Algorithm>>>>            
     - Create initial gene by pivot table
@@ -45,7 +46,7 @@ query_personnel = '''SELECT [PersonnelBaseId]
 personnel_df = pd.read_sql(query_personnel,sql_conn)
 personnel_df = personnel_df.set_index('PersonnelBaseId')
 
-# -----------------------Query for shift info-----------------------------#
+# -----------------------Query for shift info---------------------------------#
 query_shift = '''SELECT [Code]
                           ,[Title]
                           ,[Lenght]
@@ -63,44 +64,52 @@ for col in chromosom_df.columns :
                         lambda row : int(np.random.choice(shift_df.index.values
                                                           , 1))
                         ,axis=1)
-# -----------------------Randomize gene---------------------------------------# 
-ga = ga.GeneticAlgorithm(chromosom_df,
-                         population_size=2,
-                         generations=10,
-                         crossover_probability=0.8,
-                         mutation_probability=0.2,
-                         elitism=True,
-                         maximise_fitness=False)
 
+
+# -----------------------fitness function-------------------------------------# 
 def fitness (individual, data):
-    prs_count,day_count = data.shape
+    prs_count,day_count = individual.shape
+    
     shift_prs = personnel_df.reset_index()
     shift_prs['diff'] = 0
     prs_count = 0
     shift_lenght_diff = 0
     for prs in personnel_df.index: 
-        shift_lenght = 0  
-        print('prs: ' + str(prs))
+        shift_lenght = 0          
         for day in range(day_count):
-            shift_lenght += int(shift_df.loc[int(data.loc[prs][[day+1]])][1])             
-                
+            shift_lenght += shift_df.loc[individual.loc[prs,day+1]][1]
+#        print(shift_lenght)
+                     
         shift_prs.set_value(prs_count,4,shift_lenght)
         shift_prs.set_value(prs_count,7,
-                            abs(shift_prs.iloc[prs_count][4] - 
-                                shift_prs.iloc[prs_count][3])
+            abs(shift_prs.iloc[prs_count,4] - shift_prs.iloc[prs_count,3])
                             )        
         prs_count += 1 
-        print('shift_lenght: ' + str(shift_lenght))
         
     shift_lenght_diff = shift_prs.mean(axis=0)[7]
     print('shift_lenght: ' + str(shift_lenght_diff))
-    return shift_lenght_diff
+    return shift_lenght_diff    
 
+
+# -----------------------Define GA--------------------------------------------# 
+ 
+ga = ga.GeneticAlgorithm(chromosom_df,
+                          population_size=2,
+                          generations=10,
+                          crossover_probability=0.8,
+                          mutation_probability=0.2,
+                          elitism=True,
+                          maximise_fitness=False)
+ 
+ # -----------------------run ga-----------------------------------------------# 
+ 
 ga.fitness_function = fitness               # set the GA's fitness function
 ga.run()                                    # run the GA
 sol_fitness, sol_df = ga.best_individual()
+ 
                     
 # ----------------Query for insert shift assignment info----------------------#
+#=============================================================================
 cursor = sql_conn.cursor()
 year_workingperiod = 1398 * 100 + 3
 prs_count,day_count = chromosom_df.shape                      
@@ -114,6 +123,7 @@ for prs in personnel_df.index:
                        ,(prs,int(sol_df.loc[prs][[day+1]])
                        ,year_workingperiod * 100 + day+1,0,0)
                        )
-
+ 
 sql_conn.commit()                     
+#=============================================================================
 

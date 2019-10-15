@@ -64,7 +64,7 @@ class GeneticAlgorithm(object):
         self.current_generation = []
 
         def create_individual(data):            
-            individual = data #.sample(frac=1).reset_index(drop=False)            
+            individual = data.sample(frac=1)
             return individual
 
         def crossover(parent_1, parent_2):                       

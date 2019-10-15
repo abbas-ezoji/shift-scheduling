@@ -21,7 +21,7 @@ sql_conn = pyodbc.connect('''DRIVER={SQL Server Native Client 11.0};
 # -----------------------Query for gene pivoted-------------------------------#
 query_gene = '''SELECT 
             	   Code SHIFTID
-            	  ,PersianDayOfMonth
+            	  ,139803 *100 + PersianDayOfMonth as PersianDayOfMonth
             	  ,NULL PersonnelBaseId
                FROM 
     	          Shifts S JOIN 
@@ -46,28 +46,30 @@ query_personnel = '''SELECT [PersonnelBaseId]
 personnel_df = pd.read_sql(query_personnel,sql_conn)
 
 # -----------------------Randomize gene---------------------------------------#
-prs_count = personnel_df.count(axis = 0)
+prs_count,_ = personnel_df.shape
 for col in chromosom_df.columns :       
-    chromosom_df[col] = chromosom_df.apply(lambda row : np.random.randint(0,prs_count)
+    chromosom_df[col] = chromosom_df.apply(lambda row : int(np.random.choice(personnel_df.PersonnelBaseId, size=1))
                                             ,axis=1)
     
 # -----------------------Query for personnel info-----------------------------#
 
 
 # ----------------Query for insert shift assignment info----------------------#
-cursor = sql_conn.cursor()
-year_workingperiod = 1398 * 100 + 3
-day_count,shift_count = chromosom_df.shape                     
-cursor.execute('''truncate table PersonnelShiftDateAssignments''')
-
-for shift in range(shift_count):    
-    for day in range(day_count): 
-        cursor.execute('''insert into PersonnelShiftDateAssignments 
-                       values (?, ?, ?, ?, ?)'''
-                       ,( personnel_df.loc[chromosom_df.loc[day+1][[shift+1]]][[1]] # personnelID
-                         ,shift+1                     # 
-                         ,year_workingperiod * 100 + day+1,0,0)
-                       )       
-
-sql_conn.commit()                     
+# =============================================================================
+# cursor = sql_conn.cursor()
+# year_workingperiod = 1398 * 100 + 3
+# day_count,shift_count = chromosom_df.shape                     
+# cursor.execute('''truncate table PersonnelShiftDateAssignments''')
+# 
+# for shift in range(shift_count):    
+#     for day in range(day_count): 
+#         cursor.execute('''insert into PersonnelShiftDateAssignments 
+#                        values (?, ?, ?, ?, ?)'''
+#                        ,( personnel_df.loc[chromosom_df.loc[day+1][[shift+1]]][[1]] # personnelID
+#                          ,shift+1                     # 
+#                          ,year_workingperiod * 100 + day+1,0,0)
+#                        )       
+# 
+# sql_conn.commit()                     
+# =============================================================================
 
