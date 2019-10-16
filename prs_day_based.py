@@ -90,7 +90,7 @@ def fitness (individual, meta_data):
 #        print(shift_lenght - shift_prs.iloc[prs_count,3])
         prs_count += 1 
         
-    cost = np.mean(shift_lenght_diff)
+    cost = np.max(shift_lenght_diff)
 #    print('cost: ' + str(cost))
     return cost  
 # -----------------------prs output function----------------------------------# 
@@ -120,8 +120,8 @@ def get_personnel_diff_len (individual, meta_data):
 # -----------------------Define GA--------------------------------------------# 
 ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
-                          population_size=20,
-                          generations=5,
+                          population_size=50,
+                          generations=50,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
