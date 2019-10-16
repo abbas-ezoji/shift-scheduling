@@ -53,6 +53,8 @@ class data(object):
                                  1,                                 
                                  sol_fitness)
                                )
+        
+        
          
         self.sql_conn.commit()                     
        
