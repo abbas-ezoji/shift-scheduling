@@ -39,7 +39,7 @@ class data(object):
         self.sql_conn.commit()                     
     
     def insert_sol(self, sol_df, personnel_df, sol_fitness): 
-        cursor = self.cursor()                
+        cursor = self.cursor             
         year_workingperiod = 1398 * 100 + 3
         prs_count,day_count = sol_df.shape                      
         for prs in personnel_df.index:
@@ -47,8 +47,11 @@ class data(object):
             for day in range(day_count): 
                 cursor.execute('''insert into PersonnelShiftDateAssignments 
                                values (?, ?, ?, ?, ?)'''
-                               ,(prs,int(sol_df.loc[prs][[day+1]])
-                               ,year_workingperiod * 100 + day+1,0,sol_fitness)
+                               ,(prs,
+                                 year_workingperiod * 100 + day+1,
+                                 int(sol_df.loc[prs][[day+1]]),
+                                 1,                                 
+                                 sol_fitness)
                                )
          
         self.sql_conn.commit()                     

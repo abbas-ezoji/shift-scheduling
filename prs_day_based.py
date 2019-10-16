@@ -36,7 +36,7 @@ query_personnel = '''SELECT  [PersonnelBaseId]
                   '''
 query_shift = '''SELECT [Code]
 					 ,[Title]
-					 ,[Lenght]
+					 ,[Length]
 					 ,[StartTime]
 					 ,[EndTime]
 					 ,[Type]
@@ -78,7 +78,11 @@ def fitness (individual, meta_data):
 #            print('shiftcode:'+str(individual.loc[prs,day+1]))
             shift_lenght += meta_data.loc[individual.loc[prs,day+1]][1]
 
-        shift_lenght_diff.append(abs((shift_lenght/shift_prs.iloc[prs_count,3]) - 1))
+        shift_lenght_diff.append(abs(
+                                    (shift_lenght/shift_prs.iloc[prs_count,3]) 
+                                    - 1) 
+                                    * shift_prs.iloc[prs_count,6]
+                                    )
         shift_prs.set_value(prs_count,'RequirementWorkMins_real',shift_lenght)
         shift_prs.set_value(prs_count,'diff',
             abs(shift_lenght - shift_prs.iloc[prs_count,3])
@@ -89,7 +93,7 @@ def fitness (individual, meta_data):
     cost = np.mean(shift_lenght_diff)
 #    print('cost: ' + str(cost))
     return cost  
-# -----------------------prs output function-------------------------------------# 
+# -----------------------prs output function----------------------------------# 
 def get_personnel_diff_len (individual, meta_data):
     prs_count,day_count = individual.shape    
     shift_prs = personnel_df.reset_index()
@@ -114,21 +118,22 @@ def get_personnel_diff_len (individual, meta_data):
 #    print('cost: ' + str(cost))
     return cost,shift_prs
 # -----------------------Define GA--------------------------------------------# 
- 
 ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=20,
-                          generations=30,
+                          generations=5,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
                           maximise_fitness=False)
  
- # -----------------------run ga-----------------------------------------------# 
+ # -----------------------run ga----------------------------------------------# 
  
 ga.fitness_function = fitness               # set the GA's fitness function
 ga.run()                                    # run the GA
 sol_fitness, sol_df = ga.best_individual()
 sol_fitness, prs_diff_df = get_personnel_diff_len(sol_df,shift_df)
-
+# ----------------------- db inserting ------------------------------------------# 
+db.truncate()
+db.insert_sol(sol_df, personnel_df, sol_fitness)
 
