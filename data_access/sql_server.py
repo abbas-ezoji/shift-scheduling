@@ -4,7 +4,7 @@ import pandas as pd
 import pyodbc
 
 class data(object): 
-    def __init__(self, conn_str, query_gene ,query_personnel ,query_shift):
+    def __init__(self, conn_str, query_gene ,query_personnel ,query_shift,query_shift_req):
         # -------------------- Connection String -----------------------------#
         self.conn_str = conn_str
         self.sql_conn = pyodbc.connect(self.conn_str)
@@ -13,7 +13,9 @@ class data(object):
         # ----------------- Query for personnel info -------------------------#
         self.query_personnel = query_personnel        
         # -------------------Query for shift info-----------------------------#
-        self.query_shift = query_shift        
+        self.query_shift = query_shift  
+        # -------------------Query for shift_req info-----------------------------#
+        self.query_shift_req = query_shift_req        
         #-------------------------------------------------------------------         
         self.cursor = self.sql_conn.cursor()                
                
@@ -32,6 +34,10 @@ class data(object):
     def get_shift(self):
         shift_df = pd.read_sql(self.query_shift,self.sql_conn)
         return shift_df
+    
+    def get_day_req(self):
+        day_req_df = pd.read_sql(self.query_shift_req,self.sql_conn)
+        return day_req_df
         
     def truncate(self):
         cursor = self.cursor
@@ -54,8 +60,22 @@ class data(object):
                                  sol_fitness)
                                )
         
-        
-         
+# =============================================================================
+#         for prs in personnel_df.index:
+#             cursor.execute('''update [Personnel]
+#                               set [DiffNorm] = ?
+#                               where [PersonnelBaseId] = ? and
+#                                     [WorkSectionId] = ? and
+#                                     [YearWorkingPeriod] = ?
+#                            ''',
+#                            (float(personnel_df.loc[prs,'DiffNorm']),
+#                             prs,
+#                             int(personnel_df.loc[prs,'WorkSectionId']),
+#                             int(personnel_df.loc[prs,'YearWorkingPeriod'])
+#                             )
+#                            )
+#          
+# =============================================================================
         self.sql_conn.commit()                     
        
     
