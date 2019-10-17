@@ -1,25 +1,23 @@
 # -*- coding: utf-8 -*-
 """
     pyeasyga module
-
 """
 
 import random
 import copy
 from operator import attrgetter
 import numpy as np
+from time import gmtime, strftime
+import matplotlib.pyplot as plt
 
 from six.moves import range
 
 
 class GeneticAlgorithm(object):
     """Genetic Algorithm class.
-
     This is the main class that controls the functionality of the Genetic
     Algorithm.
-
     A simple example of usage:
-
     >>> # Select only two items from the list and maximise profit
     >>> from pyeasyga.pyeasyga import GeneticAlgorithm
     >>> input_data = [('pear', 50), ('apple', 35), ('banana', 40)]
@@ -31,7 +29,6 @@ class GeneticAlgorithm(object):
     >>> easyga.fitness_function = fitness
     >>> easyga.run()
     >>> print easyga.best_individual()
-
     """
 
     def __init__(self,
@@ -44,14 +41,12 @@ class GeneticAlgorithm(object):
                  elitism=True,
                  maximise_fitness=True):
         """Instantiate the Genetic Algorithm.
-
         :param seed_data: input data to the Genetic Algorithm
         :type seed_data: list of objects
         :param int population_size: size of population
         :param int generations: number of generations to evolve
         :param float crossover_probability: probability of crossover operation
         :param float mutation_probability: probability of mutation operation
-
         """
 
         self.seed_data = seed_data
@@ -67,7 +62,7 @@ class GeneticAlgorithm(object):
 
         def create_individual(data,meta_data):  
             individual = data[:]
-            for col in individual.columns :       
+            for col in individual.columns :                  
                 individual[col] = np.random.choice(meta_data.index.values.tolist(),
                                                    size=len(individual))
             return individual
@@ -88,7 +83,8 @@ class GeneticAlgorithm(object):
             for r in range(row):
                 mutate_index1 = random.randrange(1, col)
                 mutate_index2 = random.randrange(1, col)                
-                parent.iloc[r][mutate_index1], parent.iloc[r][mutate_index2] = parent.iloc[r][mutate_index2], parent.iloc[r][mutate_index1]
+                parent.iloc[r][mutate_index1] = random.randint(1, 15) 
+                parent.iloc[r][mutate_index2] = random.randint(1, 15) 
         
 
         def random_selection(population):
@@ -140,6 +136,7 @@ class GeneticAlgorithm(object):
         self.current_generation.sort(
             key=attrgetter('fitness'), reverse=self.maximise_fitness)
         print('best cost: ' + str(self.current_generation[0].fitness))
+        
 
     def create_new_population(self):
         """Create a new population using the genetic operators (selection,

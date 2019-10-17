@@ -68,7 +68,7 @@ chromosom_df = pd.pivot_table(chromosom_df, values='SHIFTID',
                               columns=['PersianDayOfMonth'], aggfunc=np.sum)
 # ----------------------- set personnel_df -----------------------------------#
 personnel_df = personnel_df.set_index('PersonnelBaseId')
-
+personnel_df['DiffNorm'] = 0
 # ----------------------- set shift_df ---------------------------------------#
 shift_df = shift_df.set_index('Code')
 # ----------------------- set day_req_df -------------------------------------#
@@ -79,42 +79,43 @@ for prs in chromosom_df.index :
     chromosom_df.loc[prs] = np.random.choice(shift_df.index.values.tolist(),
                                              size=len(chromosom_df.columns))
 
-#------------------------fitness_day_const function for day-------------------# 
+#------------------------fitness_day_const function for day-------------------------------------# 
 def fitness_day_const (individual, meta_data):
-    prs_count,day_count = individual.shape        
-    day_req_df['day_diff_typ'] = 0  
+    prs_count,day_count = individual.shape            
     max_typid = personnel_df['TypeId'].max()
     for day in range(day_count):        
         for prs in personnel_df.index:
             shift_lenght = meta_data.loc[individual.loc[prs,day+1]][1]
             type_id = personnel_df.loc[prs,'TypeId']
-            day_req_df.at[(day+1,type_id),'day_diff_typ']+= int(shift_lenght>0)                 
+            day_req_df.at[(day+1,type_id),'day_diff_typ']+= int(shift_lenght>0)            
     
-    day_req_df.at[:,'day_diff_typ'] = abs(day_req_df.loc[:,'day_diff_typ']/
-                 day_req_df.loc[:,'PersonnelTypeReqCount']-1)
+    day_req_df.at[:,'day_diff_typ'] = abs((day_req_df.loc[:,'day_diff_typ']
+                                        /day_req_df.loc[:,'PersonnelTypeReqCount']
+                                        ) - 1)
+                                      
                                              
 #    cost = np.max(shift_lenght_diff)   # tchebichef role
-    cost = np.sum(day_req_df.at[:,'day_diff_typ']) # 
+    cost = np.mean(day_req_df.loc[:,'day_diff_typ']) # 
 #    print('cost: ' + str(cost))
-    return cost 
-#------------------------fitness_prs_const function for prs ------------------# 
+    return cost
+
+#------------------------fitness_prs_const function-------------------------------------# 
 def fitness_prs_const (individual, meta_data):
-    prs_count,day_count = individual.shape    
-    shift_prs = personnel_df.reset_index()
-    shift_prs['DiffNorm'] = 0
+    prs_count,day_count = individual.shape        
     prs_count = 0
     shift_lenght_diff = []
+    max_point = personnel_df['EfficiencyRolePoint'].max()
     for prs in personnel_df.index: 
         shift_lenght = 0          
         for day in range(day_count):
             shift_lenght += meta_data.loc[individual.loc[prs,day+1]][1]
 
-        shift_lenght_diff.append(abs(shift_lenght/shift_prs.iloc[prs_count,3]-1) 
-                                    * shift_prs.iloc[prs_count,6]
-                                    )
+        shift_lenght_diff.append(abs(shift_lenght/personnel_df.loc[prs,'RequirementWorkMins_esti']-1) 
+                                    * (personnel_df.loc[prs,'EfficiencyRolePoint']/max_point)
+                                )
         personnel_df.at[prs,'RequirementWorkMins_real'] = shift_lenght
         personnel_df.at[prs,'DiffNorm'] = abs(shift_lenght - 
-                                               shift_prs.iloc[prs_count,3])
+                                               personnel_df.loc[prs,'RequirementWorkMins_esti'])
         prs_count += 1 
         
 #    cost = np.max(shift_lenght_diff)   # tchebichef role
@@ -123,8 +124,8 @@ def fitness_prs_const (individual, meta_data):
     return cost 
 # ----------------------- fitness all ----------------------------------------#
 def fitness (individual, meta_data):
-    day_const = fitness_day_const(individual, meta_data)
-    prs_const = fitness_prs_const(individual, meta_data)
+    day_const = 0.8*fitness_day_const(individual, meta_data)
+    prs_const = 0.2*fitness_prs_const(individual, meta_data)
     cost = day_const + prs_const
     return cost
 # -----------------------Define GA--------------------------------------------# 
