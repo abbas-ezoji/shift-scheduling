@@ -194,11 +194,14 @@ class GeneticAlgorithm(object):
 
     def run(self):
         """Run (solve) the Genetic Algorithm."""
+        print('start: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
         self.create_first_generation()
 
         for g in range(1, self.generations):
-            print('generation: ' +str(g))
-            self.create_next_generation()
+            print('---------- Start ---------------')            
+            print('generation-' +str(g) + ' -> start: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
+            self.create_next_generation()            
+            print('----------- End ----------------')
 
     def best_individual(self):
         """Return the individual with the best fitness in the current

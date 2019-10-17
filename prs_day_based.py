@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from data_access.sql_server import data 
 from libs import GA_dataframes as ga
-
+import datetime
 # ----------------------- get data -------------------------------------------#
 conn_str = '''DRIVER={SQL Server Native Client 11.0};
              SERVER=172.16.47.154;
@@ -130,8 +130,8 @@ def fitness (individual, meta_data):
 # -----------------------Define GA--------------------------------------------# 
 ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
-                          population_size=50,
-                          generations=100,
+                          population_size=20,
+                          generations=50,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -139,7 +139,9 @@ ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
  
  # -----------------------run ga----------------------------------------------# 
 ga.fitness_function = fitness         # set the GA's fitness function
+start_time = datetime.datetime.now()
 ga.run()                                    # run the GA
+start_time = datetime.datetime.now()
 sol_fitness, sol_df = ga.best_individual()
 
 # ----------------------- db inserting ---------------------------------------# 
