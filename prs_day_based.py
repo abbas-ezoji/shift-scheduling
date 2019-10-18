@@ -156,7 +156,30 @@ start_time = datetime.datetime.now()
 ga.run()                                    # run the GA
 start_time = datetime.datetime.now()
 sol_fitness, sol_df = ga.best_individual()
+#########################################################
+sht = shift_df.reset_index()
+df = pd.melt(sol_df.reset_index(), 
+             id_vars=['PersonnelBaseId',
+                      'TypeId',
+                      'EfficiencyRolePoint',
+                      'RequirementWorkMins_esti'
+                     ],
+             var_name='Day', 
+             value_name='ShiftCode')
+df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
+#######################################################
+prs_cons = df.groupby(['PersonnelBaseId',
+                      'TypeId',
+                      'EfficiencyRolePoint',
+                      'RequirementWorkMins_esti'
+                     ]).sum().drop(columns=['ShiftCode', 'StartTime', 'EndTime', 'Type'])
+prs_cons = prs_cons.reset_index(level=3)
+prs_cons['diff'] = abs(prs_cons['RequirementWorkMins_esti'] - prs_cons['Length'])
+#########################################################3
 
+day_cons = df.where(df['Length']>0).groupby(['TypeId']).sum()
+day_cons = day_cons.merge(sum_typid_req, left_on='TypeId', right_on='TypeId', how='inner')
+day_cons['diff'] = day_cons['Length'] - day_cons['rec_by_type']
 # ----------------------- db inserting ---------------------------------------# 
 db.truncate()
 db.insert_sol(sol_df, personnel_df, sol_fitness)

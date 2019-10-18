@@ -83,8 +83,10 @@ class GeneticAlgorithm(object):
             for r in range(row):
                 mutate_index1 = random.randrange(1, col)
                 mutate_index2 = random.randrange(1, col)                
-                parent.iloc[r][mutate_index1] = random.randint(1, 15) 
-                parent.iloc[r][mutate_index2] = random.randint(1, 15) 
+                parent.iloc[r][mutate_index1] = np.random.choice(meta_data.index.values.tolist(),
+                                                   size=1)
+                parent.iloc[r][mutate_index2] = np.random.choice(meta_data.index.values.tolist(),
+                                                   size=1)
         
 
         def random_selection(population):
@@ -193,10 +195,13 @@ class GeneticAlgorithm(object):
         """Run (solve) the Genetic Algorithm."""
         print('start: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
         self.create_first_generation()
-
+        lagr_t = 0.0001
         for g in range(1, self.generations):
             print('---------- Start ---------------')            
             print('generation-' +str(g) + ' -> start: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
+            if (g>100):
+                self.crossover_probability = (g/1000)
+                self.mutation_probability =  1.0 - (g/1000)
             self.create_next_generation()            
             print('----------- End ----------------')
 
