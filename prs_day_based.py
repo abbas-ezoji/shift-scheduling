@@ -18,9 +18,12 @@ conn_str = '''DRIVER={SQL Server Native Client 11.0};
              PWD=1qaz!QAZ
           '''
 query_gene = '''SELECT 
-                    PersonnelBaseId            	   
-                    ,PersianDayOfMonth
-                    ,NULL SHIFTID
+                     PersonnelBaseId 
+					,TypeId     
+					,EfficiencyRolePoint  
+					,RequirementWorkMins_esti    	   
+                    ,PersianDayOfMonth as Day
+                    ,NULL ShiftCode
                 FROM 
                     Personnel P JOIN
                     Dim_Date D ON D.PersianYear = 1398 AND PersianMonth=3
@@ -35,7 +38,7 @@ query_personnel = '''SELECT  [PersonnelBaseId]
                             ,[DiffNorm]
                     FROM [Personnel]
                   '''
-query_shift = '''SELECT [Code]
+query_shift = '''SELECT [Code] as ShiftCode
 					 ,[Title]
 					 ,[Length]
 					 ,[StartTime]
@@ -63,14 +66,18 @@ personnel_df = pd.DataFrame(db.get_personnel())
 shift_df = pd.DataFrame(db.get_shift())
 day_req_df = pd.DataFrame(db.get_day_req())
 # ----------------------- gene pivoted ---------------------------------------#
-chromosom_df = pd.pivot_table(chromosom_df, values='SHIFTID', 
-                              index=['PersonnelBaseId'],
-                              columns=['PersianDayOfMonth'], aggfunc=np.sum)
+chromosom_df = pd.pivot_table(chromosom_df, values='ShiftCode', 
+                              index=['PersonnelBaseId',
+                                     'TypeId',
+                                     'EfficiencyRolePoint',
+                                     'RequirementWorkMins_esti'
+                                    ],
+                              columns=['Day'], aggfunc=np.sum)
 # ----------------------- set personnel_df -----------------------------------#
 personnel_df = personnel_df.set_index('PersonnelBaseId')
 personnel_df['DiffNorm'] = 0
 # ----------------------- set shift_df ---------------------------------------#
-shift_df = shift_df.set_index('Code')
+shift_df = shift_df.set_index('ShiftCode')
 # ----------------------- set day_req_df -------------------------------------#
 day_req_df = day_req_df.set_index(['Day','PersonnelTypeReqID'])
 day_req_df['day_diff_typ'] = 0
@@ -78,60 +85,65 @@ day_req_df['day_diff_typ'] = 0
 for prs in chromosom_df.index :       
     chromosom_df.loc[prs] = np.random.choice(shift_df.index.values.tolist(),
                                              size=len(chromosom_df.columns))
-
+# ---------------------- sum_typid_req ---------------------------------------#
+work_mins = 420
+req_day = day_req_df.reset_index()
+sum_typid_req = req_day.groupby('PersonnelTypeReqID').agg(
+                rec_by_type = pd.NamedAgg(column='PersonnelTypeReqCount', aggfunc='sum')                 
+                )
+sum_typid_req['rec_by_type'] = sum_typid_req['rec_by_type']*work_mins
+sum_typid_req['TypeId'] = [1,2,3]
 #------------------------fitness_day_const function for day-------------------------------------# 
-def fitness_day_const (individual, meta_data):
-    prs_count,day_count = individual.shape            
-    max_typid = personnel_df['TypeId'].max()
-    for day in range(day_count):        
-        for prs in personnel_df.index:
-            shift_lenght = meta_data.loc[individual.loc[prs,day+1]][1]
-            type_id = personnel_df.loc[prs,'TypeId']
-            day_req_df.at[(day+1,type_id),'day_diff_typ']+= int(shift_lenght>0)            
-    
-    day_req_df.at[:,'day_diff_typ'] = abs((day_req_df.loc[:,'day_diff_typ']
-                                        /day_req_df.loc[:,'PersonnelTypeReqCount']
-                                        ) - 1)
-                                      
-                                             
-#    cost = np.max(shift_lenght_diff)   # tchebichef role
-    cost = np.mean(day_req_df.loc[:,'day_diff_typ']) # 
+def calc_day_const (df_day,sum_typid_req):              
+    df = df_day.where(df_day['Length']>0).groupby(['TypeId']).sum()
+    df = df.merge(sum_typid_req, left_on='TypeId', right_on='TypeId', how='inner')
+    df['diff'] = df['Length'] - df['rec_by_type']
+    df['diff'] = abs((df['diff']/df['rec_by_type'])-1)
+    all_point = df.sum()['EfficiencyRolePoint']
+    df['diff'] = df['diff'] * (df['EfficiencyRolePoint']/all_point)    
+    min_diff = df['diff'].min()
+    max_diff = df['diff'].max()
+    df['diff_norm'] = (df['diff'] - min_diff) / (max_diff - min_diff)
+    cost = np.sum(df['diff_norm']) 
 #    print('cost: ' + str(cost))
     return cost
 
 #------------------------fitness_prs_const function-------------------------------------# 
-def fitness_prs_const (individual, meta_data):
-    prs_count,day_count = individual.shape        
-    prs_count = 0
-    shift_lenght_diff = []
-    max_point = personnel_df['EfficiencyRolePoint'].max()
-    for prs in personnel_df.index: 
-        shift_lenght = 0          
-        for day in range(day_count):
-            shift_lenght += meta_data.loc[individual.loc[prs,day+1]][1]
-
-        shift_lenght_diff.append(abs(shift_lenght/personnel_df.loc[prs,'RequirementWorkMins_esti']-1) 
-                                    * (personnel_df.loc[prs,'EfficiencyRolePoint']/max_point)
-                                )
-        personnel_df.at[prs,'RequirementWorkMins_real'] = shift_lenght
-        personnel_df.at[prs,'DiffNorm'] = abs(shift_lenght - 
-                                               personnel_df.loc[prs,'RequirementWorkMins_esti'])
-        prs_count += 1 
-        
-#    cost = np.max(shift_lenght_diff)   # tchebichef role
-    cost = np.mean(shift_lenght_diff) # 
+def calc_prs_const (individual, meta_data):
+    df = individual
+    df = df.groupby(['PersonnelBaseId',
+                      'TypeId',
+                      'EfficiencyRolePoint',
+                      'RequirementWorkMins_esti'
+                     ]).sum().drop(columns=['ShiftCode', 'StartTime', 'EndTime', 'Type'])
+    df = df.reset_index(level=3)
+    df['diff'] = abs(df['RequirementWorkMins_esti'] - df['Length'])
+    min_diff = df['diff'].min()
+    max_diff = df['diff'].max()
+    df['diff_norm'] = (df['diff'] - min_diff) / (max_diff - min_diff)
+    cost = np.sum(df['diff_norm'])      
 #    print('cost: ' + str(cost))
     return cost 
 # ----------------------- fitness all ----------------------------------------#
 def fitness (individual, meta_data):
-    day_const = 0.8*fitness_day_const(individual, meta_data)
-    prs_const = 0.2*fitness_prs_const(individual, meta_data)
+    sht = shift_df.reset_index()
+    df = pd.melt(individual.reset_index(), 
+                 id_vars=['PersonnelBaseId',
+                          'TypeId',
+                          'EfficiencyRolePoint',
+                          'RequirementWorkMins_esti'
+                         ],
+                 var_name='Day', 
+                 value_name='ShiftCode')
+    df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
+    day_const = 0.8*calc_day_const(df, sum_typid_req)
+    prs_const = 0.2*calc_prs_const(df, sum_typid_req)
     cost = day_const + prs_const
     return cost
 # -----------------------Define GA--------------------------------------------# 
 ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
-                          population_size=20,
+                          population_size=50,
                           generations=50,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
