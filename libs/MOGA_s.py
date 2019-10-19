@@ -136,18 +136,18 @@ class GeneticAlgorithm(object):
         maximise_fitness.
         """
         self.current_generation.sort(
-            key=attrgetter('fitness'), reverse=not(self.maximise_fitness))
+            key=attrgetter('fitness'), reverse=self.maximise_fitness)
 
 
     def create_new_population(self):
         """Create a new population using the genetic operators (selection,
         crossover, and mutation) supplied.
         """
-        new_population = self.current_generation
-        
+        new_population = []
+        elite = copy.deepcopy(self.current_generation[0])
         selection = self.selection_function
-        
-        while len(new_population) < 3 * self.population_size:
+        max_pop = 2 * len(self.current_generation)
+        while len(new_population) < max_pop:
             parent_1 = copy.deepcopy(selection(self.current_generation))
             parent_2 = copy.deepcopy(selection(self.current_generation))
 
@@ -166,9 +166,11 @@ class GeneticAlgorithm(object):
                 self.mutate_function(child_2.genes)
 
             new_population.append(child_1)
-            if len(new_population) < self.population_size:
+            if len(new_population) < max_pop:
                 new_population.append(child_2)        
-
+        
+        if self.elitism:
+            new_population[0] = elite
         self.current_generation = new_population
 
     def create_first_generation(self):
@@ -176,17 +178,27 @@ class GeneticAlgorithm(object):
         rank the population by fitness according to the order specified.
         """
         self.create_initial_population()
-        self.calculate_population_fitness()
+        self.calculate_population_fitness(0)
         self.rank_population()
+        print('best cost: ' + str(self.current_generation[0].fitness))
+        print('npop: ' + str(len(self.current_generation)))
 
     def create_next_generation(self):
         """Create subsequent populations, calculate the population fitness and
         rank the population by fitness in the order specified.
         """
-        self.create_new_population()
-        for i in range(2):
+        self.create_new_population()        
+        
+        for i in range(2):                               # 2 is count of Obectives func
             self.calculate_population_fitness(i+1)
-            self.rank_population()
+            self.rank_population()              
+            len_pop = len(self.current_generation)
+            precent_inx = (len_pop - round(len_pop * (1 / 100)) - 1)
+            if(len_pop > 3*self.population_size):
+                precent_inx = len_pop // 2
+            kill_pop = self.current_generation[precent_inx:len_pop-1]
+            self.current_generation = self.current_generation[0:precent_inx-1]
+                 
 
     def run(self):
         """Run (solve) the Genetic Algorithm."""
@@ -199,7 +211,11 @@ class GeneticAlgorithm(object):
             if (g>100):
                 self.crossover_probability = (g/self.generations)
                 self.mutation_probability =  1.0 - (g/self.generations)
-            self.create_next_generation()            
+            self.create_next_generation() 
+            self.calculate_population_fitness(0)
+            self.rank_population()
+            print('best cost: ' + str(self.current_generation[0].fitness))
+            print('npop: ' + str(len(self.current_generation)))
             print('----------- End ----------------')
 
     def best_individual(self):
