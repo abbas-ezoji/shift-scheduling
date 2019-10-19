@@ -200,9 +200,12 @@ class GeneticAlgorithm(object):
             print('---------- Start ---------------')            
             print('generation-' +str(g) + ' -> start: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
             if (g>100):
-                self.crossover_probability = (g/1000)
-                self.mutation_probability =  1.0 - (g/1000)
-            self.create_next_generation()            
+                self.crossover_probability = (g/self.generations)
+                self.mutation_probability =  1.0 - (g/self.generations)
+            self.create_next_generation()
+            if (g/100 - g//100 == 0):
+                csv_name = './output/out_GA_' + str(g/100) + '.csv'
+                self.current_generation[0].genes.to_csv(csv_name)
             print('----------- End ----------------')
 
     def best_individual(self):

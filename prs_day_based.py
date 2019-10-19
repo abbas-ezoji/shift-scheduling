@@ -144,7 +144,7 @@ def fitness (individual, meta_data):
 ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=50,
+                          generations=500,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,

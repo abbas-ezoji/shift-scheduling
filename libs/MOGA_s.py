@@ -216,6 +216,9 @@ class GeneticAlgorithm(object):
             self.rank_population()
             print('best cost: ' + str(self.current_generation[0].fitness))
             print('npop: ' + str(len(self.current_generation)))
+            if (g/100 - g//100 == 0):
+                csv_name = './output/out_MOGA_' + str(g/100) + '.csv'
+                self.current_generation[0].genes.to_csv(csv_name)
             print('----------- End ----------------')
 
     def best_individual(self):
