@@ -44,22 +44,13 @@ class data(object):
         cursor.execute('''truncate table PersonnelShiftDateAssignments''')
         self.sql_conn.commit()                     
     
-    def insert_sol(self, sol_df, personnel_df, sol_fitness): 
-        cursor = self.cursor             
-        year_workingperiod = 1398 * 100 + 3
-        prs_count,day_count = sol_df.shape                      
-        for prs in personnel_df.index:
-            prs_count = prs_count + 1
-            for day in range(day_count): 
-                cursor.execute('''insert into PersonnelShiftDateAssignments 
-                               values (?, ?, ?, ?, ?)'''
-                               ,(prs,
-                                 year_workingperiod * 100 + day+1,
-                                 int(sol_df.loc[prs][[day+1]]),
-                                 1,                                 
-                                 sol_fitness)
-                               )
-        
+    def insert_sol(self, sol_tbl, personnel_df, sol_fitness): 
+        cursor = self.cursor    
+        for i in range(len(sol_tbl)):
+            cursor.execute('''insert into PersonnelShiftDateAssignments  
+                               values (?, ?, ?, ?, ?, ?, ?, ?)'''
+                               ,(sol_tbl[i])
+                               )                
 # =============================================================================
 #         for prs in personnel_df.index:
 #             cursor.execute('''update [Personnel]
@@ -76,8 +67,4 @@ class data(object):
 #                            )
 #          
 # =============================================================================
-        self.sql_conn.commit()                     
-       
-    
-
-
+        self.sql_conn.commit()

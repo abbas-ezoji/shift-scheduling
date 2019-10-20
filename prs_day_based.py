@@ -144,7 +144,7 @@ def fitness (individual, meta_data):
 ga = ga.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=500,
+                          generations=50,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -156,6 +156,12 @@ start_time = datetime.datetime.now()
 ga.run()                                    # run the GA
 start_time = datetime.datetime.now()
 sol_fitness, sol_df = ga.best_individual()
+sol_tbl = sol_df.stack()
+sol_tbl = sol_tbl.reset_index()
+sol_tbl['Rank'] = 1
+sol_tbl['Cost'] = sol_fitness
+sol_tbl = sol_tbl.values.tolist()
+print(sol_tbl[1])
 #########################################################
 sht = shift_df.reset_index()
 df = pd.melt(sol_df.reset_index(), 
@@ -182,5 +188,5 @@ day_cons = day_cons.merge(sum_typid_req, left_on='TypeId', right_on='TypeId', ho
 day_cons['diff'] = day_cons['Length'] - day_cons['rec_by_type']
 # ----------------------- db inserting ---------------------------------------# 
 db.truncate()
-db.insert_sol(sol_df, personnel_df, sol_fitness)
+db.insert_sol(sol_tbl, personnel_df, sol_fitness)
 
