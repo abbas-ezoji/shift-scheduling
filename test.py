@@ -1,7 +1,9 @@
-import pandas as pd
+import sys
 
-s1 = pd.Series([1, 2, 3, 4, 5, 6], index=(range(6)))
-s2 = pd.Series([10, 9, 8, 7, 6, 5], index=(range(6)))
-df = pd.DataFrame(s1, columns=['s1'])
-df['s2'] = s2
-df.to_csv('./output/test1.csv')
+def hello(a,b):
+    print ("hello and that's your sum:", a + b)
+
+if __name__ == "__main__":
+    a = int(sys.argv[1])
+    b = int(sys.argv[2])
+    hello(a, b)

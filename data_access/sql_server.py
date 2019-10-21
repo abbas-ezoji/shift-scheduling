@@ -4,27 +4,40 @@ import pandas as pd
 import pyodbc
 
 class data(object): 
-    def __init__(self, conn_str, query_gene ,query_personnel ,query_shift,query_shift_req):
+    def __init__(self, 
+                 conn_str, 
+                 query_gene_last,
+                 query_gene_new,
+                 query_personnel,
+                 query_shift,
+                 query_shift_req
+                 ):
         # -------------------- Connection String -----------------------------#
         self.conn_str = conn_str
         self.sql_conn = pyodbc.connect(self.conn_str)
         # ------------------ Query for gene pivoted --------------------------#
-        self.query_gene = query_gene
+        self.query_gene_last = query_gene_last
+        self.query_gene_new = query_gene_new
         # ----------------- Query for personnel info -------------------------#
         self.query_personnel = query_personnel        
         # -------------------Query for shift info-----------------------------#
         self.query_shift = query_shift  
-        # -------------------Query for shift_req info-----------------------------#
+        # -------------------Query for shift_req info-------------------------#
         self.query_shift_req = query_shift_req        
-        #-------------------------------------------------------------------         
-        self.cursor = self.sql_conn.cursor()                
+        #---------------------------------------------------------------------#         
+        self.cursor = self.sql_conn.cursor() 
+        
+        self.new = 0
                
     def get_sql_conn(self):
         sql_conn = self.sql_conn
         return sql_conn
         
     def get_chromosom(self):
-        chromosom_df = pd.read_sql(self.query_gene, self.sql_conn)
+        chromosom_df = pd.read_sql(self.query_gene_last, self.sql_conn)
+        if(chromosom_df.empty):
+            self.new = 1
+            chromosom_df = pd.read_sql(self.query_gene_new, self.sql_conn)
         return chromosom_df
     
     def get_personnel(self):
@@ -40,15 +53,17 @@ class data(object):
         return day_req_df
         
     def truncate(self):
-        cursor = self.cursor
-        cursor.execute('''truncate table PersonnelShiftDateAssignments''')
-        self.sql_conn.commit()                     
-    
+        if self.new:
+            cursor = self.cursor
+            cursor.execute('''truncate table PersonnelShiftDateAssignments''')
+            self.sql_conn.commit()                     
+    def is_new(self):
+        return self.new
     def insert_sol(self, sol_tbl, personnel_df, sol_fitness): 
         cursor = self.cursor    
         for i in range(len(sol_tbl)):
             cursor.execute('''insert into PersonnelShiftDateAssignments  
-                               values (?, ?, ?, ?, ?, ?, ?, ?)'''
+                               values (?, ?, ?, ?, ?, ?, ?)'''
                                ,(sol_tbl[i])
                                )                
 # =============================================================================
