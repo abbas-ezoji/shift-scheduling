@@ -23,12 +23,13 @@ conn_str = '''DRIVER={SQL Server Native Client 11.0};
              UID=sa;
              PWD=1qaz!QAZ
           '''
-query_gene_last =('  SELECT S.[PersonnelBaseId]'+                  
+query_gene_last =('SELECT S.[PersonnelBaseId]'+                  
                   '        ,S.[YearWorkingPeriod]'+
                   '        ,S.[Day]      '+
                   '  	  ,ShiftId as ShiftCode ' +
                   '  FROM [PersonnelShiftDateAssignments] S'+
-                  '  	   JOIN Personnel P on P.PersonnelBaseId = S.PersonnelBaseId'+
+                  '  	   JOIN Personnel P ' +
+                  '  on P.PersonnelBaseId = S.PersonnelBaseId'+
                   '  WHERE '+
                   '  	EndTime in  '+
                   '  	(SELECT MAX(EndTime) FROM  '+
@@ -184,7 +185,7 @@ def fitness (individual, meta_data):
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=200,
+                          generations=5,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -201,7 +202,7 @@ sol_tbl = sol_tbl.reset_index()
 
 sol_tbl['Rank'] = 1
 sol_tbl['Cost'] = sol_fitness
-sol_tbl['EndTime'] = strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime())
+sol_tbl['EndTime'] =  strftime('%Y-%m-%d %H:%M:%S')
 sol_tbl = sol_tbl.drop(columns=['TypeId', 'EfficiencyRolePoint', 'RequirementWorkMins_esti'])
 sol_tbl = sol_tbl.values.tolist()
 print(sol_tbl[1])
