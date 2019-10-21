@@ -23,13 +23,21 @@ conn_str = '''DRIVER={SQL Server Native Client 11.0};
              UID=sa;
              PWD=1qaz!QAZ
           '''
-query_gene_last =('SELECT S.[PersonnelBaseId]'+                  
+query_gene_last =('  SELECT S.[PersonnelBaseId]'+                  
                   '        ,S.[YearWorkingPeriod]'+
                   '        ,S.[Day]      '+
-                  '  	  ,ShiftId as ShiftCode' +
-                  '    FROM [PersonnelShiftDateAssignments] S'+
+                  '  	  ,ShiftId as ShiftCode ' +
+                  '  FROM [PersonnelShiftDateAssignments] S'+
                   '  	   JOIN Personnel P on P.PersonnelBaseId = S.PersonnelBaseId'+
-                  '  WHERE P.WorkSectionId = '+
+                  '  WHERE '+
+                  '  	EndTime in  '+
+                  '  	(SELECT MAX(EndTime) FROM  '+
+                  '  	 [PersonnelShiftDateAssignments] s  '+
+                  '  	 JOIN Personnel P ON P.PersonnelBaseId  '+
+                  '  	 = S.PersonnelBaseId '+
+                  '  	 GROUP BY WorkSectionId '+
+                  '  	 ,P.YearWorkingPeriod) '+
+                  ' AND P.WorkSectionId = '+    
                     str(work_sction_id) +
                     'AND S.YearWorkingPeriod ='+
                     str(year_working_period)

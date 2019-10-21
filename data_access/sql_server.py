@@ -53,7 +53,7 @@ class data(object):
         return day_req_df
         
     def truncate(self):
-        if self.new:
+        if not(self.new):
             cursor = self.cursor
             cursor.execute('''truncate table PersonnelShiftDateAssignments''')
             self.sql_conn.commit()                     
