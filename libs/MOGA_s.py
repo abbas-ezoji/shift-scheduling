@@ -66,7 +66,22 @@ class GeneticAlgorithm(object):
                 individual[col] = np.random.choice(meta_data.index.values.tolist(),
                                                    size=len(individual))
             return individual
+        
+        def create_individual_elitism(data,meta_data, count):  
+            individual = data[:]
+            #print(individual)
+            row, col = individual.shape
+            if (count==0 and self.elitism):
+                individual = data[:]                                                  
+            else:
+                for r in range(row):
+                    crossover_index = (random.randrange(1, col - 1))
+                    colt = crossover_index
+                    individual.iloc[r] = np.append(individual.iloc[r, colt:],
+                                                   individual.iloc[r, :colt])                    
+            return individual
 
+        
         def crossover(parent_1, parent_2):                       
             child_1, child_2 = parent_1, parent_2
             row, col = parent_1.shape
@@ -108,7 +123,7 @@ class GeneticAlgorithm(object):
         self.tournament_selection = tournament_selection
         self.tournament_size = self.population_size // 10
         self.random_selection = random_selection
-        self.create_individual = create_individual
+        self.create_individual = create_individual_elitism
         self.crossover_function = crossover
         self.mutate_function = mutate
         self.selection_function = self.tournament_selection
@@ -117,8 +132,8 @@ class GeneticAlgorithm(object):
         """Create members of the first population randomly.
         """
         initial_population = []
-        for _ in range(self.population_size):
-            genes = self.create_individual(self.seed_data,self.meta_data)            
+        for i in range(self.population_size):
+            genes = self.create_individual(self.seed_data,self.meta_data, i)            
             individual = Chromosome(genes)
             initial_population.append(individual)
         self.current_generation = initial_population
