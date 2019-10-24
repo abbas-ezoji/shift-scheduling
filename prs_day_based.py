@@ -61,7 +61,7 @@ query_personnel = '''SELECT  [PersonnelBaseId]
 							,[YearWorkingPeriod]
 							,[RequirementWorkMins_esti]
 							,[RequirementWorkMins_real]
-							,[TypeId]
+							,[TypeId] prs_typ_id
 							,[EfficiencyRolePoint]
                             ,[DiffNorm]
                     FROM [Personnel]
@@ -74,11 +74,11 @@ query_shift = '''SELECT [id] as ShiftCode
 					 ,[Length]
 					 ,[StartTime]
 					 ,[EndTime]
-					 ,[Type]
+					 ,[Type] ShiftTypeID
              FROM [Didgah_Timekeeper_DM].[dbo].[Shifts]
 			 '''   
 query_shift_req = '''SELECT [PersianDayOfMonth] AS Day
-                          ,[PersonnelTypeReqID] as TypeId
+                          ,[PersonnelTypeReqID] as prs_typ_id
                           ,[ShiftTypeID]
                           ,[ReqMinCount]
                           ,[ReqMaxCount]
@@ -113,7 +113,7 @@ chromosom_df = chromosom_df.merge(personnel_df,
 chromosom_df = chromosom_df.rename(columns={"YearWorkingPeriod_x": "YearWorkingPeriod"})
 chromosom_df = pd.pivot_table(chromosom_df, values='ShiftCode', 
                               index=['PersonnelBaseId',
-                                      'TypeId',
+                                      'prs_typ_id',
                                       'EfficiencyRolePoint',
                                       'RequirementWorkMins_esti',
                                       'YearWorkingPeriod'
@@ -127,7 +127,7 @@ personnel_df['DiffNorm'] = 0
 # ----------------------- set shift_df ---------------------------------------#
 shift_df = shift_df.set_index('ShiftCode')
 # ----------------------- set day_req_df -------------------------------------#
-day_req_df = day_req_df.set_index(['Day','TypeId','ShiftTypeID'])
+day_req_df = day_req_df.set_index(['Day','prs_typ_id','ShiftTypeID'])
 day_req_df['day_diff_typ'] = 0
 # -----------------------Randomize gene---------------------------------------#
 if (is_new):
@@ -139,7 +139,7 @@ if (is_new):
 # ---------------------- sum_typid_req ---------------------------------------#
 work_mins = 420
 req_day = day_req_df.reset_index()
-sum_typid_req = req_day.groupby(['TypeId','ShiftTypeID']).agg(
+sum_typid_req = req_day.groupby(['Day','prs_typ_id','ShiftTypeID']).agg(
                 ReqMinCount = pd.NamedAgg(column='ReqMinCount', 
                                           aggfunc='sum'),
                 ReqMaxCount = pd.NamedAgg(column='ReqMaxCount', 
@@ -151,8 +151,9 @@ sum_typid_req['ReqMean'] = (sum_typid_req['ReqMaxCount'] +
                             sum_typid_req['ReqMinCount'])/2
 #------------------------fitness_day_const function for day-------------------# 
 def calc_day_const (df_day,sum_typid_req):              
-    df = df_day.where(df_day['Length']>0).groupby(['TypeId']).sum()
-    df = df.merge(sum_typid_req, left_on='TypeId', right_on='TypeId', how='inner')    
+    df = df_day.groupby(['Day','prs_typ_id','ShiftTypeID']).sum()
+    df = df.merge(sum_typid_req, left_on='prs_typ_id', 
+                  right_on='prs_typ_id', how='inner')    
     df['diff'] = df['Length'] - df['ReqMean']                     
     df['diff'] = abs((df['diff']/df['ReqMean'])-1)
     all_point = df.sum()['EfficiencyRolePoint']
@@ -168,12 +169,12 @@ def calc_day_const (df_day,sum_typid_req):
 def calc_prs_const (individual, meta_data):
     df = individual
     df = df.groupby(['PersonnelBaseId',
-                      'TypeId',
+                      'prs_typ_id',
                       'EfficiencyRolePoint',
                       'RequirementWorkMins_esti',
                       'YearWorkingPeriod'
                      ]).sum().drop(columns=['ShiftCode', 'StartTime', 
-                                             'EndTime', 'Type'])
+                                             'EndTime', 'ShiftTypeID'])
     df = df.reset_index(level=3)
     df['diff'] = abs(df['RequirementWorkMins_esti'] - df['Length'])
     min_diff = df['diff'].min()
@@ -187,7 +188,7 @@ def fitness (individual, meta_data):
     sht = shift_df.reset_index()
     df = pd.melt(individual.reset_index(), 
                  id_vars=['PersonnelBaseId',
-                          'TypeId',
+                          'prs_typ_id',
                           'EfficiencyRolePoint',
                           'RequirementWorkMins_esti',
                           'YearWorkingPeriod'
@@ -203,7 +204,7 @@ def fitness (individual, meta_data):
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=5,
+                          generations=20,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -221,14 +222,16 @@ sol_tbl = sol_tbl.reset_index()
 sol_tbl['Rank'] = 1
 sol_tbl['Cost'] = sol_fitness
 sol_tbl['EndTime'] =  strftime('%Y-%m-%d %H:%M:%S')
-sol_tbl = sol_tbl.drop(columns=['TypeId', 'EfficiencyRolePoint', 'RequirementWorkMins_esti'])
+sol_tbl = sol_tbl.drop(columns=['prs_typ_id', 
+                                'EfficiencyRolePoint', 
+                                'RequirementWorkMins_esti'])
 sol_tbl = sol_tbl.values.tolist()
 print(sol_tbl[1])
 #########################################################
 sht = shift_df.reset_index()
 df = pd.melt(sol_df.reset_index(), 
              id_vars=['PersonnelBaseId',
-                      'TypeId',
+                      'prs_typ_id',
                       'EfficiencyRolePoint',
                       'RequirementWorkMins_esti',
                       'YearWorkingPeriod'
@@ -238,18 +241,19 @@ df = pd.melt(sol_df.reset_index(),
 df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
 #######################################################
 prs_cons = df.groupby(['PersonnelBaseId',
-                      'TypeId',
+                      'prs_typ_id',
                       'EfficiencyRolePoint',
                       'RequirementWorkMins_esti',
                       'YearWorkingPeriod'
                      ]).sum().drop(columns=['ShiftCode', 'StartTime', 
-                                            'EndTime', 'Type'])
+                                            'EndTime', 'ShiftTypeID'])
 prs_cons = prs_cons.reset_index(level=3)
 prs_cons['diff'] = abs(prs_cons['RequirementWorkMins_esti'] - prs_cons['Length'])
 #########################################################3
 
-day_cons = df.where(df['Length']>0).groupby(['TypeId']).sum()
-day_cons = day_cons.merge(sum_typid_req, left_on='TypeId', right_on='TypeId', 
+day_cons = df.where(df['Length']>0).groupby(['prs_typ_id']).sum()
+day_cons = day_cons.merge(sum_typid_req, 
+                          left_on='prs_typ_id', right_on='prs_typ_id', 
                           how='inner')
 day_cons['diff'] = day_cons['Length'] - day_cons['ReqMean']
 # ----------------------- inserting ---------------------------------------# 
