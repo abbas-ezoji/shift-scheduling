@@ -69,16 +69,20 @@ class GeneticAlgorithm(object):
         
         def create_individual_elitism(data,meta_data, count):  
             individual = data[:]
-            #print(individual)
+            
             row, col = individual.shape
             if (count==0 and self.elitism):
-                individual = data[:]                                                  
+                individual = data[:]
+#                print('first: ')
+#                print(individual.loc[101,1])                                               
             else:
                 for r in range(row):
                     crossover_index = (random.randrange(1, col - 1))
                     colt = crossover_index
                     individual.iloc[r] = np.append(individual.iloc[r, colt:],
-                                                   individual.iloc[r, :colt])                    
+                                                   individual.iloc[r, :colt]) 
+#                print('else: ')
+#                print(individual.loc[101,1])
             return individual
 
 
@@ -96,13 +100,16 @@ class GeneticAlgorithm(object):
         def mutate(individual):
             parent = individual
             row , col = parent.shape
+            shift_list = np.flip(meta_data.index.values.tolist())
             for r in range(row):
                 mutate_index1 = random.randrange(1, col)
                 mutate_index2 = random.randrange(1, col)                
-                parent.iloc[r][mutate_index1] = np.random.choice(meta_data.index.values.tolist(),
-                                                   size=1)
-                parent.iloc[r][mutate_index2] = np.random.choice(meta_data.index.values.tolist(),
-                                                   size=1)
+                parent.iloc[r][mutate_index1] = np.random.choice(shift_list,
+                                                 p=[0.05,0.15,0.35,0.45],
+                                                 size=1)
+                parent.iloc[r][mutate_index2] = np.random.choice(shift_list,
+                                                 p=[0.05,0.15,0.35,0.45],
+                                                 size=1)
         
 
         def random_selection(population):
