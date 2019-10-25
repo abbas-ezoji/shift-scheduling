@@ -170,7 +170,7 @@ def calc_day_const (individual,sum_typid_req):
 #    max_diff = df['diff'].max()
 #    df['diff_norm'] = (df['diff'] - min_diff) / (max_diff - min_diff)
     df['diff_norm'] = df['diff']/df['diff_max']
-    cost = np.max(df['diff_norm']) 
+    cost = np.mean(df['diff_norm']) 
 #    print('cost: ' + str(cost))
     return cost
 
@@ -208,15 +208,15 @@ def fitness (individual, meta_data):
                  var_name='Day', 
                  value_name='ShiftCode')
     df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
-    day_const = 0.5*calc_day_const(df, sum_typid_req)
-    prs_const = 0.5*calc_prs_const(df, sum_typid_req)
+    day_const = 0.8*calc_day_const(df, sum_typid_req)
+    prs_const = 0.2*calc_prs_const(df, sum_typid_req)
     cost = day_const + prs_const
     return cost
 # -----------------------Define GA--------------------------------------------# 
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=250,
+                          generations=50,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
