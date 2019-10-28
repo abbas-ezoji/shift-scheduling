@@ -74,7 +74,7 @@ query_shift = '''SELECT [id] as ShiftCode
 					 ,[Type] ShiftTypeID
              FROM [Didgah_Timekeeper_DM].[dbo].[Shifts]
 			 '''   
-query_shift_req = '''SELECT [PersianDayOfMonth] AS Day
+query_shift_req = '''SELECT [PersianDayOfMonth] AS Day                          
                           ,[PersonnelTypeReqID] as prs_typ_id
                           ,[ShiftTypeID]
                           ,[ReqMinCount]
@@ -83,8 +83,7 @@ query_shift_req = '''SELECT [PersianDayOfMonth] AS Day
                     FROM 
                     	[WorkSectionRequirements] R
                     	JOIN Dim_Date D ON D.PersianYear=R.Year
-                    	AND D.PersianMonth = R.Month
-                    	AND D.SpecialDay = R.DayType
+                    	AND D.PersianMonth = R.Month                    	
                     WHERE 
 						YEAR = {0} AND Month = {1}
                         AND WorkSectionId = {2}
@@ -240,7 +239,7 @@ def fitness (individual, meta_data):
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=200,
+                          generations=20,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -306,5 +305,5 @@ day_cons = day_cons.merge(typid_req_day,
 day_cons['diff_max'] = abs(day_cons['prs_count'] - day_cons['ReqMaxCount'])
 day_cons['diff_min'] = abs(day_cons['prs_count'] - day_cons['ReqMinCount'])  
 day_cons['diff'] = day_cons[['diff_max','diff_min']].apply(np.min, axis=1) 
-
+day_cons.sort_index(axis=0, level=[0,1,2], ascending=True, inplace=True)
 
