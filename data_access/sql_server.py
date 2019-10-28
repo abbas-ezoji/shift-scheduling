@@ -52,18 +52,20 @@ class data(object):
         day_req_df = pd.read_sql(self.query_shift_req,self.sql_conn)
         return day_req_df
         
-    def truncate(self):
-        if not(self.new):
-            cursor = self.cursor
-            cursor.execute('''truncate table PersonnelShiftDateAssignments''')
-            self.sql_conn.commit()                     
+    def delete_last_sol(self,work_sction_id,year_working_period):
+        cursor = self.cursor
+        query_delete = '''delete from PersonnelShiftDateAssignments 
+                          where WorkSectionId ={0} and YearWorkingPeriod = {1}
+                        '''.format(work_sction_id,year_working_period)
+        cursor.execute(query_delete)
+        self.sql_conn.commit()                     
     def is_new(self):
         return self.new
     def insert_sol(self, sol_tbl, personnel_df, sol_fitness): 
         cursor = self.cursor    
         for i in range(len(sol_tbl)):
             cursor.execute('''insert into PersonnelShiftDateAssignments  
-                               values (?, ?, ?, ?, ?, ?, ?)'''
+                               values (?, ?, ?, ?, ?, ?, ?, ?)'''
                                ,(sol_tbl[i])
                                )                
 # =============================================================================

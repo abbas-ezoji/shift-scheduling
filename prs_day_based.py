@@ -13,7 +13,10 @@ import datetime
 from time import gmtime, strftime
 
 work_sction_id = 1
-year_working_period = 139803
+year_working_period = 139806
+
+PersianYear = int(year_working_period / 100)
+PersianMonth = int(year_working_period % 100)
 # ----------------------- get data -------------------------------------------#
 conn_str = '''DRIVER={SQL Server Native Client 11.0};
              SERVER=172.16.47.154;
@@ -23,26 +26,21 @@ conn_str = '''DRIVER={SQL Server Native Client 11.0};
              UID=sa;
              PWD=1qaz!QAZ
           '''
-query_gene_last =('SELECT S.[PersonnelBaseId]'+                  
-                  '        ,S.[YearWorkingPeriod]'+
-                  '        ,S.[Day]      '+
-                  '  	  ,ShiftId as ShiftCode ' +
-                  '  FROM [PersonnelShiftDateAssignments] S'+
-                  '  	   JOIN Personnel P ' +
-                  '  on P.PersonnelBaseId = S.PersonnelBaseId'+
-                  '  WHERE '+
-                  '  	EndTime in  '+
-                  '  	(SELECT MAX(EndTime) FROM  '+
-                  '  	 [PersonnelShiftDateAssignments] s  '+
-                  '  	 JOIN Personnel P ON P.PersonnelBaseId  '+
-                  '  	 = S.PersonnelBaseId '+
-                  '  	 GROUP BY WorkSectionId '+
-                  '  	 ,P.YearWorkingPeriod) '+
-                  ' AND P.WorkSectionId = '+    
-                    str(work_sction_id) +
-                    'AND S.YearWorkingPeriod ='+
-                    str(year_working_period)
-                )
+query_gene_last ='''SELECT S.[PersonnelBaseId]                 
+                          ,S.[YearWorkingPeriod]
+                          ,S.[Day]      
+                      	  ,ShiftId as ShiftCode 
+                    FROM 
+                    	[PersonnelShiftDateAssignments] S  	   
+                    WHERE 
+                      	EndTime in  
+                      	(SELECT MAX(EndTime) FROM  
+                      	 [PersonnelShiftDateAssignments] 
+                    	 GROUP BY WorkSectionId 
+                      	 ,YearWorkingPeriod) 
+                    	 AND WorkSectionId = {0}                      
+                    	 AND S.YearWorkingPeriod = {1}                    
+                 '''.format(work_sction_id,year_working_period)
                     
 query_gene_new = '''SELECT 
                          PersonnelBaseId     					 
@@ -51,10 +49,10 @@ query_gene_new = '''SELECT
                         ,NULL ShiftCode
                     FROM 
                         Personnel P JOIN
-                        Dim_Date D ON D.PersianYear = 1398 AND PersianMonth=3
-                  '''  
-query_gene_new = (query_gene_new + ' AND p.WorkSectionId = ' 
-                                + str(work_sction_id))
+                        Dim_Date D ON D.PersianYear = {0} 
+                        AND PersianMonth={1} and WorkSectionId = {2}
+                  '''.format(PersianYear, PersianMonth, work_sction_id)
+                  
 
 query_personnel = '''SELECT  [PersonnelBaseId]
 							,[WorkSectionId]
@@ -65,9 +63,8 @@ query_personnel = '''SELECT  [PersonnelBaseId]
 							,[EfficiencyRolePoint]
                             ,[DiffNorm]
                     FROM [Personnel]
-                  '''
-query_personnel = (query_personnel + ' WHERE WorkSectionId = ' 
-                                   + str(work_sction_id))
+                    WHERE WorkSectionId = {0} AND YearWorkingPeriod = {1}
+                  '''.format(work_sction_id,year_working_period)
                   
 query_shift = '''SELECT [id] as ShiftCode
 					 ,[Title]
@@ -88,10 +85,13 @@ query_shift_req = '''SELECT [PersianDayOfMonth] AS Day
                     	JOIN Dim_Date D ON D.PersianYear=R.Year
                     	AND D.PersianMonth = R.Month
                     	AND D.SpecialDay = R.DayType
+                    WHERE 
+						YEAR = {0} AND Month = {1}
+                        AND WorkSectionId = {2}
                     ORDER BY 
                     	WorkSectionId,D.Date
                     	,PersonnelTypeReqID,ShiftTypeID                        
-                  '''              
+                  '''.format(PersianYear, PersianMonth, work_sction_id)             
 db = data(conn_str =  conn_str,
           query_gene_last = query_gene_last,
           query_gene_new = query_gene_new,
@@ -110,7 +110,8 @@ chromosom_df = chromosom_df.merge(personnel_df,
                                   left_on='PersonnelBaseId', 
                                   right_on='PersonnelBaseId', 
                                   how='inner')
-chromosom_df = chromosom_df.rename(columns={"YearWorkingPeriod_x": "YearWorkingPeriod"})
+chromosom_df = chromosom_df.rename(columns={"YearWorkingPeriod_x": 
+                                            "YearWorkingPeriod"})
 chromosom_df = pd.pivot_table(chromosom_df, values='ShiftCode', 
                               index=['PersonnelBaseId',
                                       'prs_typ_id',
@@ -129,27 +130,55 @@ shift_df = shift_df.set_index('ShiftCode')
 # ----------------------- set day_req_df -------------------------------------#
 day_req_df = day_req_df.set_index(['Day','prs_typ_id','ShiftTypeID'])
 day_req_df['day_diff_typ'] = 0
+day_count =len(day_req_df.groupby(axis=0, level=0, as_index=True).count())
 # -----------------------Randomize gene---------------------------------------#
 if (is_new):    
     shift_list = np.flip(shift_df.index.values.tolist())   
     for prs in chromosom_df.index :       
         chromosom_df.loc[prs] = np.random.choice(shift_list,
-                                                 p=[0.05,0.15,0.35,0.45],
+                                                 p=[0.1,0.2,0.3,0.4],
                                                  size=len(chromosom_df.columns))
         
-# ---------------------- sum_typid_req ---------------------------------------#
-
+# ---------------------- calcute typid_req_day---------------------------------------#
 req_day = day_req_df.reset_index()
-sum_typid_req = req_day.groupby(['Day','prs_typ_id','ShiftTypeID']).agg(
+typid_req_day = req_day.groupby(['Day','prs_typ_id','ShiftTypeID']).agg(
                 ReqMinCount = pd.NamedAgg(column='ReqMinCount', 
                                           aggfunc='sum'),
                 ReqMaxCount = pd.NamedAgg(column='ReqMaxCount', 
                                           aggfunc='sum')
                 )
-sum_typid_req['ReqMean'] = (sum_typid_req['ReqMaxCount'] + 
-                            sum_typid_req['ReqMinCount'])/2
+typid_req_day['ReqMean'] = (typid_req_day['ReqMaxCount'] + 
+                            typid_req_day['ReqMinCount'])/2   
+# ---------------------- Calcute diff require and resource--------------------# 
+                    #---------------sum_typid_req---------------#
+sum_typid_req = typid_req_day.reset_index()          
+sum_typid_req = sum_typid_req.groupby('prs_typ_id').agg(
+            req_min  = pd.NamedAgg(column='ReqMinCount', 
+                                          aggfunc='sum'), 
+            req_max = pd.NamedAgg(column='ReqMaxCount', 
+                                          aggfunc='sum'),
+            req_mean= pd.NamedAgg(column='ReqMean', 
+                                          aggfunc='sum'),            
+        )
+sum_typid_req = sum_typid_req[:]*480
+                     #--------------sum_typid_prs----------------#
+sum_typid_prs = personnel_df.groupby('prs_typ_id').agg(
+            all_rec  = pd.NamedAgg(column='RequirementWorkMins_esti', 
+                                          aggfunc='sum'), 
+            count_prs = pd.NamedAgg(column='RequirementWorkMins_esti', 
+                                          aggfunc='count'),
+        )
+                     #--------------sum_typid_prs----------------#
+diff_req_rec = sum_typid_req.join(sum_typid_prs,how='inner')                   
+diff_req_rec['diff_min'] = (diff_req_rec['req_min'] - 
+                            diff_req_rec['all_rec'] )/diff_req_rec['count_prs'] 
+diff_req_rec['diff_max'] = (diff_req_rec['req_max'] - 
+                            diff_req_rec['all_rec'] )/diff_req_rec['count_prs'] 
+diff_req_rec['diff_mean'] = (diff_req_rec['req_mean'] - 
+                            diff_req_rec['all_rec'] )/diff_req_rec['count_prs']
+#diff_req_rec = diff_req_rec.reset_index()
 #------------------------fitness_day_const function for day-------------------# 
-def calc_day_const (individual,sum_typid_req):   
+def calc_day_const (individual,meta_data):   
     df = individual           
     df = df[df['Length']>0].groupby(['Day',
                                      'prs_typ_id',
@@ -159,17 +188,12 @@ def calc_day_const (individual,sum_typid_req):
                         prs_points = pd.NamedAgg(column='EfficiencyRolePoint', 
                                           aggfunc='sum'),
                         )
-    df = df.merge(sum_typid_req, left_on=['Day','prs_typ_id','ShiftTypeID'], 
+    df = df.merge(meta_data, left_on=['Day','prs_typ_id','ShiftTypeID'], 
                   right_on=['Day','prs_typ_id','ShiftTypeID'], how='inner')    
     df['diff_max'] = abs(df['prs_count'] - df['ReqMaxCount'])
     df['diff_min'] = abs(df['prs_count'] - df['ReqMinCount'])  
-    df['diff'] = df[['diff_max','diff_min']].apply(np.min, axis=1)                
-#    all_point = df.sum()['prs_points']
-#    df['diff'] = df['diff'] * (df['prs_points']/all_point)    
-#    min_diff = df['diff'].min()
-#    max_diff = df['diff'].max()
-#    df['diff_norm'] = (df['diff'] - min_diff) / (max_diff - min_diff)
-    df['diff_norm'] = df['diff']/df['diff_max']
+    df['diff'] = df[['diff_max','diff_min']].apply(np.min, axis=1)
+    df['diff_norm'] = df['diff']/df['ReqMaxCount']
     cost = np.mean(df['diff_norm']) 
 #    print('cost: ' + str(cost))
     return cost
@@ -183,17 +207,17 @@ def calc_prs_const (individual, meta_data):
                       'RequirementWorkMins_esti',
                       'YearWorkingPeriod'
                      ]).sum().drop(columns=['ShiftCode', 'StartTime', 
-                                            'EndTime', 'ShiftTypeID'])
-    df = df.reset_index(level=[2,3])
-    df['diff'] = abs(df['RequirementWorkMins_esti'] + 5000 - df['Length'])     
-#    all_point = df.sum()['EfficiencyRolePoint']
-#    df['diff'] = df['diff'] * (df['EfficiencyRolePoint']/all_point)
-#    min_diff = df['diff'].min()
-#    max_diff = df['diff'].max()
-#    df['diff_norm'] = (df['diff'] - min_diff) / (max_diff - min_diff)
-    df['diff_norm'] = df['diff']/5000
+                                            'EndTime', 'ShiftTypeID'])    
+    df = df.reset_index()
+    meta_data = meta_data.reset_index()
+    df = df.merge(meta_data, left_on='prs_typ_id', right_on='prs_typ_id'
+                  ,how='inner')
+    
+    df['diff'] = abs(df['RequirementWorkMins_esti'] + 
+                     df['diff_min'] - df['Length'])         
+    df['diff_norm'] = df['diff']/df['RequirementWorkMins_esti']
     cost = np.mean(df['diff_norm'])      
-#    print('cost: ' + str(cost))◘
+#    print('cost: ' + str(cost))
     return cost 
 # ----------------------- fitness all ----------------------------------------#
 def fitness (individual, meta_data):
@@ -208,15 +232,15 @@ def fitness (individual, meta_data):
                  var_name='Day', 
                  value_name='ShiftCode')
     df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
-    day_const = 0.8*calc_day_const(df, sum_typid_req)
-    prs_const = 0.2*calc_prs_const(df, sum_typid_req)
+    day_const = 0.8*calc_day_const(df, typid_req_day)
+    prs_const = 0.2*calc_prs_const(df, diff_req_rec)
     cost = day_const + prs_const
     return cost
 # -----------------------Define GA--------------------------------------------# 
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=50,
+                          generations=200,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -234,11 +258,15 @@ sol_tbl = sol_tbl.reset_index()
 sol_tbl['Rank'] = 1
 sol_tbl['Cost'] = sol_fitness
 sol_tbl['EndTime'] =  strftime('%Y-%m-%d %H:%M:%S')
+sol_tbl['WorkSectionId'] = work_sction_id
 sol_tbl = sol_tbl.drop(columns=['prs_typ_id', 
                                 'EfficiencyRolePoint', 
                                 'RequirementWorkMins_esti'])
 sol_tbl = sol_tbl.values.tolist()
-print(sol_tbl[1])
+# ----------------------- inserting ------------------------------------------# 
+db.delete_last_sol(work_sction_id,year_working_period)
+db.insert_sol(sol_tbl, personnel_df, sol_fitness)
+#-------------------- output show --------------------------------------------#
 #########################################################
 sht = shift_df.reset_index()
 df = pd.melt(sol_df.reset_index(), 
@@ -271,13 +299,12 @@ day_cons = df[df['Length']>0].groupby(['Day',
                               prs_points = pd.NamedAgg(column='EfficiencyRolePoint', 
                                           aggfunc='sum'),
                             )
-day_cons = day_cons.merge(sum_typid_req, 
+day_cons = day_cons.merge(typid_req_day, 
                           left_on=['Day','prs_typ_id','ShiftTypeID'], 
                           right_on=['Day','prs_typ_id','ShiftTypeID'], 
                           how='inner')             
 day_cons['diff_max'] = abs(day_cons['prs_count'] - day_cons['ReqMaxCount'])
 day_cons['diff_min'] = abs(day_cons['prs_count'] - day_cons['ReqMinCount'])  
 day_cons['diff'] = day_cons[['diff_max','diff_min']].apply(np.min, axis=1) 
-# ----------------------- inserting ---------------------------------------# 
-db.insert_sol(sol_tbl, personnel_df, sol_fitness)
+
 
