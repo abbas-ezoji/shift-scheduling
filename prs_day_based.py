@@ -72,7 +72,7 @@ query_shift = '''SELECT [id] as ShiftCode
 					 ,[StartTime]
 					 ,[EndTime]
 					 ,[Type] ShiftTypeID
-             FROM [Didgah_Timekeeper_DM].[dbo].[Shifts]
+                FROM [Get_Shifts]
 			 '''   
 query_shift_req = '''SELECT [PersianDayOfMonth] AS Day                          
                           ,[PersonnelTypeReqID] as prs_typ_id
@@ -135,7 +135,7 @@ if (is_new):
     shift_list = np.flip(shift_df.index.values.tolist())   
     for prs in chromosom_df.index :       
         chromosom_df.loc[prs] = np.random.choice(shift_list,
-                                                 p=[0.1,0.2,0.3,0.4],
+                                                 #p=[0.1,0.2,0.3,0.4],
                                                  size=len(chromosom_df.columns))
         
 # ---------------------- calcute typid_req_day---------------------------------------#
@@ -221,6 +221,14 @@ def calc_prs_const (individual, meta_data):
 # ----------------------- fitness all ----------------------------------------#
 def fitness (individual, meta_data):
     sht = shift_df.reset_index()
+    sht_2 = sht[sht['ShiftCode']>10]
+    sht_2['Length'] = sht_2['Length'] // 2
+    sht_2['ShiftTypeID'] = sht_2['ShiftTypeID'] // 10
+    sht_2.index = [7,8,9]
+    sht['Length'] = sht['Length'] // 2
+    sht['ShiftTypeID'] = sht['ShiftTypeID'] % 10
+    sht.append(sht_2)
+    #sht[sht['ShiftCode']>10]
     df = pd.melt(individual.reset_index(), 
                  id_vars=['PersonnelBaseId',
                           'prs_typ_id',

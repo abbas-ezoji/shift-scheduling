@@ -105,10 +105,10 @@ class GeneticAlgorithm(object):
                 mutate_index1 = random.randrange(1, col)
                 mutate_index2 = random.randrange(1, col)                
                 parent.iloc[r][mutate_index1] = np.random.choice(shift_list,
-                                                 p=[0.05,0.15,0.35,0.45],
+                                                 #p=[0.05,0.15,0.35,0.45],
                                                  size=1)
                 parent.iloc[r][mutate_index2] = np.random.choice(shift_list,
-                                                 p=[0.05,0.15,0.35,0.45],
+                                                 #p=[0.05,0.15,0.35,0.45],
                                                  size=1)
         
 
