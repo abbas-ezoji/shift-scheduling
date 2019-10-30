@@ -72,7 +72,7 @@ query_shift = '''SELECT [id] as ShiftCode
 					 ,[StartTime]
 					 ,[EndTime]
 					 ,[Type] ShiftTypeID
-                FROM [Get_Shifts]
+                FROM [Shifts]
 			 '''   
 query_shift_req = '''SELECT [PersianDayOfMonth] AS Day                          
                           ,[PersonnelTypeReqID] as prs_typ_id
@@ -227,7 +227,7 @@ def fitness (individual, meta_data):
     sht_2.index = [7,8,9]
     sht['Length'] = sht['Length'] // 2
     sht['ShiftTypeID'] = sht['ShiftTypeID'] % 10
-    sht.append(sht_2)
+    sht = sht.append(sht_2)
     #sht[sht['ShiftCode']>10]
     df = pd.melt(individual.reset_index(), 
                  id_vars=['PersonnelBaseId',
@@ -276,6 +276,13 @@ db.insert_sol(sol_tbl, personnel_df, sol_fitness)
 #-------------------- output show --------------------------------------------#
 #########################################################
 sht = shift_df.reset_index()
+sht_2 = sht[sht['ShiftCode']>10]
+sht_2['Length'] = sht_2['Length'] // 2
+sht_2['ShiftTypeID'] = sht_2['ShiftTypeID'] // 10
+sht_2.index = [7,8,9]
+sht['Length'] = sht['Length'] // 2
+sht['ShiftTypeID'] = sht['ShiftTypeID'] % 10
+sht = sht.append(sht_2)
 df = pd.melt(sol_df.reset_index(), 
              id_vars=['PersonnelBaseId',
                       'prs_typ_id',
