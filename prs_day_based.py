@@ -31,22 +31,26 @@ query_gene_last ='''SELECT S.[PersonnelBaseId]
                           ,S.[Day]      
                       	  ,ShiftId as ShiftCode 
                     FROM 
-                    	[PersonnelShiftDateAssignments] S  	   
-                    WHERE 
-                      	EndTime in  
-                      	(SELECT MAX(EndTime) FROM  
-                      	 [PersonnelShiftDateAssignments] 
-                    	 GROUP BY WorkSectionId 
-                      	 ,YearWorkingPeriod) 
-                    	 AND WorkSectionId = {0}                      
-                    	 AND S.YearWorkingPeriod = {1}                    
+                    	[PersonnelShiftDateAssignments] S 
+                        JOIN (SELECT  [PersonnelBaseId]
+                                     ,[YearWorkingPeriod]
+                                     ,MIN(Cost) Cost
+                                     ,MAX(EndTime) EndTime
+                			  FROM PersonnelShiftDateAssignments
+                			  GROUP BY [PersonnelBaseId],[YearWorkingPeriod]
+                			  )T ON T.PersonnelBaseId = S.PersonnelBaseId 
+                                 AND T.YearWorkingPeriod = S.YearWorkingPeriod
+                				 AND T.Cost = S.Cost 
+                        WHERE                           	
+                        	 WorkSectionId = {0}                      
+                        	 AND S.YearWorkingPeriod = {1}                    
                  '''.format(work_sction_id,year_working_period)
                     
 query_gene_new = '''SELECT 
                          PersonnelBaseId     					 
 						,YearWorkingPeriod
                         ,PersianDayOfMonth as Day
-                        ,NULL ShiftCode
+                        ,1 ShiftCode
                     FROM 
                         Personnel P JOIN
                         Dim_Date D ON D.PersianYear = {0} 
@@ -105,22 +109,30 @@ shift_df = pd.DataFrame(db.get_shift())
 day_req_df = pd.DataFrame(db.get_day_req())
 is_new = db.is_new()
 # ----------------------- gene pivoted ---------------------------------------#
+chromosom_df_ttt =  chromosom_df
 chromosom_df = chromosom_df.merge(personnel_df, 
                                   left_on='PersonnelBaseId', 
                                   right_on='PersonnelBaseId', 
                                   how='inner')
-chromosom_df = chromosom_df.rename(columns={"YearWorkingPeriod_x": 
-                                            "YearWorkingPeriod"})
+
+ 
 chromosom_df = pd.pivot_table(chromosom_df, values='ShiftCode', 
                               index=['PersonnelBaseId',
                                       'prs_typ_id',
                                       'EfficiencyRolePoint',
-                                      'RequirementWorkMins_esti',
-                                      'YearWorkingPeriod'
+                                      'RequirementWorkMins_esti'                                                                           
                                     ],
                               columns=['Day'], aggfunc=np.sum)
 
-#tttt = chromosom_df
+#chromosom_df['YearWorkingPeriod'] = year_working_period
+#chromosom_df = chromosom_df.reset_index()
+#chromosom_df = chromosom_df.set_index(['PersonnelBaseId',
+#                                      'prs_typ_id',
+#                                      'EfficiencyRolePoint',
+#                                      'RequirementWorkMins_esti',
+#                                      'YearWorkingPeriod'
+#                                        ])
+chromosom_df_ttt =  chromosom_df  
 # ----------------------- set personnel_df -----------------------------------#
 personnel_df = personnel_df.set_index('PersonnelBaseId')
 personnel_df['DiffNorm'] = 0
@@ -131,14 +143,14 @@ day_req_df = day_req_df.set_index(['Day','prs_typ_id','ShiftTypeID'])
 day_req_df['day_diff_typ'] = 0
 day_count =len(day_req_df.groupby(axis=0, level=0, as_index=True).count())
 # -----------------------Randomize gene---------------------------------------#
-if (is_new):    
+if (is_new):      
     shift_list = np.flip(shift_df.index.values.tolist())   
     for prs in chromosom_df.index :       
         chromosom_df.loc[prs] = np.random.choice(shift_list,
                                                  p=[1/14,1/14,1/14,
                                                     1/14,2/14,3/14,5/14],
                                                  size=len(chromosom_df.columns))
-        
+     
 # ---------------------- calcute typid_req_day---------------------------------------#
 req_day = day_req_df.reset_index()
 typid_req_day = req_day.groupby(['Day','prs_typ_id','ShiftTypeID']).agg(
@@ -207,8 +219,7 @@ def calc_prs_const (individual, meta_data):
     df = df.groupby(['PersonnelBaseId',
                       'prs_typ_id',
                       'EfficiencyRolePoint',
-                      'RequirementWorkMins_esti',
-                      'YearWorkingPeriod'
+                      'RequirementWorkMins_esti',                      
                      ]).sum().drop(columns=['ShiftCode', 'StartTime', 
                                             'EndTime', 'ShiftTypeID'])    
     df = df.reset_index()
@@ -240,7 +251,7 @@ def fitness (individual, meta_data):
                           'prs_typ_id',
                           'EfficiencyRolePoint',
                           'RequirementWorkMins_esti',
-                          'YearWorkingPeriod'
+                          
                          ],
                  var_name='Day', 
                  value_name='ShiftCode')
@@ -249,11 +260,11 @@ def fitness (individual, meta_data):
     prs_const = 0.2*calc_prs_const(df, diff_req_rec)
     cost = day_const + prs_const
     return cost
-# -----------------------Define GA--------------------------------------------# 
+# -----------------------Define GA--------------------------------------------#   
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=20,
+                          generations=2,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -272,13 +283,14 @@ sol_tbl['Rank'] = 1
 sol_tbl['Cost'] = sol_fitness
 sol_tbl['EndTime'] =  strftime('%Y-%m-%d %H:%M:%S')
 sol_tbl['WorkSectionId'] = work_sction_id
+sol_tbl['YearWorkingPeriod'] = year_working_period
 sol_tbl = sol_tbl.drop(columns=['prs_typ_id', 
                                 'EfficiencyRolePoint', 
                                 'RequirementWorkMins_esti'])
 sol_tbl = sol_tbl.values.tolist()
 # ----------------------- inserting ------------------------------------------# 
-db.delete_last_sol(work_sction_id,year_working_period)
-db.insert_sol(sol_tbl, personnel_df, sol_fitness)
+#db.delete_last_sol(work_sction_id,year_working_period)
+db.insert_sol(sol_tbl, personnel_df, sol_fitness,work_sction_id,year_working_period)
 #-------------------- output show --------------------------------------------#
 #########################################################
 sht = shift_df.reset_index()
@@ -294,7 +306,7 @@ df = pd.melt(sol_df.reset_index(),
                       'prs_typ_id',
                       'EfficiencyRolePoint',
                       'RequirementWorkMins_esti',
-                      'YearWorkingPeriod'
+                     
                      ],
              var_name='Day', 
              value_name='ShiftCode')
@@ -304,7 +316,7 @@ prs_cons = df.groupby(['PersonnelBaseId',
                       'prs_typ_id',
                       'EfficiencyRolePoint',
                       'RequirementWorkMins_esti',
-                      'YearWorkingPeriod'
+                      
                      ]).sum().drop(columns=['ShiftCode', 'StartTime', 
                                             'EndTime', 'ShiftTypeID'])
 prs_cons = prs_cons.reset_index(level=3)

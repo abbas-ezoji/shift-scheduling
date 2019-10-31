@@ -72,9 +72,7 @@ class GeneticAlgorithm(object):
             
             row, col = individual.shape
             if (count==0 and self.elitism):
-                individual = data[:]
-#                print('first: ')
-#                print(individual.loc[101,1])                                               
+                individual = data[:]                                                          
             else:
                 for r in range(row):
                     crossover_index = (random.randrange(1, col - 1))

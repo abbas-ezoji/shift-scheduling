@@ -35,7 +35,7 @@ class data(object):
         
     def get_chromosom(self):
         chromosom_df = pd.read_sql(self.query_gene_last, self.sql_conn)
-        if(chromosom_df.empty):
+        if(chromosom_df.empty):              
             self.new = 1
             chromosom_df = pd.read_sql(self.query_gene_new, self.sql_conn)
         return chromosom_df
@@ -61,8 +61,19 @@ class data(object):
         self.sql_conn.commit()                     
     def is_new(self):
         return self.new
-    def insert_sol(self, sol_tbl, personnel_df, sol_fitness): 
-        cursor = self.cursor    
+    def insert_sol(self, sol_tbl, personnel_df, sol_fitness,
+                   work_sction_id,year_working_period): 
+        cursor = self.cursor  
+        query_last = '''select * from PersonnelShiftDateAssignments 
+                          where WorkSectionId ={0} and YearWorkingPeriod = {1}
+                        '''.format(work_sction_id,year_working_period)
+        last_df = pd.read_sql(query_last,self.sql_conn)
+        last_cost = last_df['Cost'].min()        
+        if(last_cost > sol_fitness):
+            query_delete = '''delete from PersonnelShiftDateAssignments 
+                              where WorkSectionId ={0} and YearWorkingPeriod = {1}
+                            '''.format(work_sction_id,year_working_period)
+            cursor.execute(query_delete)
         for i in range(len(sol_tbl)):
             cursor.execute('''insert into PersonnelShiftDateAssignments  
                                values (?, ?, ?, ?, ?, ?, ?, ?)'''
