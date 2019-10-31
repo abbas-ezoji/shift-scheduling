@@ -135,7 +135,8 @@ if (is_new):
     shift_list = np.flip(shift_df.index.values.tolist())   
     for prs in chromosom_df.index :       
         chromosom_df.loc[prs] = np.random.choice(shift_list,
-                                                 #p=[0.1,0.2,0.3,0.4],
+                                                 p=[1/14,1/14,1/14,
+                                                    1/14,2/14,3/14,5/14],
                                                  size=len(chromosom_df.columns))
         
 # ---------------------- calcute typid_req_day---------------------------------------#
@@ -188,12 +189,15 @@ def calc_day_const (individual,meta_data):
                                           aggfunc='sum'),
                         )
     df = df.merge(meta_data, left_on=['Day','prs_typ_id','ShiftTypeID'], 
-                  right_on=['Day','prs_typ_id','ShiftTypeID'], how='inner')    
+                  right_on=['Day','prs_typ_id','ShiftTypeID'], how='right') 
+    df.fillna(0,inplace=True)
     df['diff_max'] = abs(df['prs_count'] - df['ReqMaxCount'])
     df['diff_min'] = abs(df['prs_count'] - df['ReqMinCount'])  
     df['diff'] = df[['diff_max','diff_min']].apply(np.min, axis=1)
     df['diff_norm'] = df['diff']/df['ReqMaxCount']
-    cost = np.mean(df['diff_norm']) 
+#    cost = np.mean(df['diff_norm'])
+    df['diff_norm'] = df['diff_norm']**2
+    cost = np.sum(df['diff_norm']) / len(df)
 #    print('cost: ' + str(cost))
     return cost
 
@@ -215,7 +219,9 @@ def calc_prs_const (individual, meta_data):
     df['diff'] = abs(df['RequirementWorkMins_esti'] + 
                      df['diff_min'] - df['Length'])         
     df['diff_norm'] = df['diff']/df['RequirementWorkMins_esti']
-    cost = np.mean(df['diff_norm'])      
+#    cost = np.mean(df['diff_norm'])    
+    df['diff_norm'] = df['diff_norm']**2
+    cost = np.sum(df['diff_norm']) / len(df)
 #    print('cost: ' + str(cost))
     return cost 
 # ----------------------- fitness all ----------------------------------------#
@@ -313,10 +319,12 @@ day_cons = df[df['Length']>0].groupby(['Day',
                               prs_points = pd.NamedAgg(column='EfficiencyRolePoint', 
                                           aggfunc='sum'),
                             )
+                              
 day_cons = day_cons.merge(typid_req_day, 
                           left_on=['Day','prs_typ_id','ShiftTypeID'], 
                           right_on=['Day','prs_typ_id','ShiftTypeID'], 
-                          how='inner')             
+                          how='right') 
+day_cons.fillna(0,inplace=True)            
 day_cons['diff_max'] = abs(day_cons['prs_count'] - day_cons['ReqMaxCount'])
 day_cons['diff_min'] = abs(day_cons['prs_count'] - day_cons['ReqMinCount'])  
 day_cons['diff'] = day_cons[['diff_max','diff_min']].apply(np.min, axis=1) 
