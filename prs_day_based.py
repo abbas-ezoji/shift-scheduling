@@ -109,13 +109,10 @@ shift_df = pd.DataFrame(db.get_shift())
 day_req_df = pd.DataFrame(db.get_day_req())
 is_new = db.is_new()
 # ----------------------- gene pivoted ---------------------------------------#
-chromosom_df_ttt =  chromosom_df
 chromosom_df = chromosom_df.merge(personnel_df, 
                                   left_on='PersonnelBaseId', 
                                   right_on='PersonnelBaseId', 
                                   how='inner')
-
- 
 chromosom_df = pd.pivot_table(chromosom_df, values='ShiftCode', 
                               index=['PersonnelBaseId',
                                       'prs_typ_id',
@@ -123,16 +120,6 @@ chromosom_df = pd.pivot_table(chromosom_df, values='ShiftCode',
                                       'RequirementWorkMins_esti'                                                                           
                                     ],
                               columns=['Day'], aggfunc=np.sum)
-
-#chromosom_df['YearWorkingPeriod'] = year_working_period
-#chromosom_df = chromosom_df.reset_index()
-#chromosom_df = chromosom_df.set_index(['PersonnelBaseId',
-#                                      'prs_typ_id',
-#                                      'EfficiencyRolePoint',
-#                                      'RequirementWorkMins_esti',
-#                                      'YearWorkingPeriod'
-#                                        ])
-chromosom_df_ttt =  chromosom_df  
 # ----------------------- set personnel_df -----------------------------------#
 personnel_df = personnel_df.set_index('PersonnelBaseId')
 personnel_df['DiffNorm'] = 0
@@ -149,9 +136,9 @@ if (is_new):
         chromosom_df.loc[prs] = np.random.choice(shift_list,
                                                  p=[1/14,1/14,1/14,
                                                     1/14,2/14,3/14,5/14],
-                                                 size=len(chromosom_df.columns))
-     
-# ---------------------- calcute typid_req_day---------------------------------------#
+                                                 size=len(chromosom_df.columns)
+                                                 )    
+# ---------------------- calcute typid_req_day--------------------------------#
 req_day = day_req_df.reset_index()
 typid_req_day = req_day.groupby(['Day','prs_typ_id','ShiftTypeID']).agg(
                 ReqMinCount = pd.NamedAgg(column='ReqMinCount', 
@@ -159,7 +146,7 @@ typid_req_day = req_day.groupby(['Day','prs_typ_id','ShiftTypeID']).agg(
                 ReqMaxCount = pd.NamedAgg(column='ReqMaxCount', 
                                           aggfunc='sum')
                 )
-typid_req_day['ReqMean'] = (typid_req_day['ReqMaxCount'] + 
+typid_req_day['ReqMean'] = (typid_req_day['ReqMaxCount']+ 
                             typid_req_day['ReqMinCount'])/2   
 # ---------------------- Calcute diff require and resource--------------------# 
                     #---------------sum_typid_req---------------#
@@ -264,7 +251,7 @@ def fitness (individual, meta_data):
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=2,
+                          generations=50,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
