@@ -175,6 +175,15 @@ class GeneticAlgorithm(object):
         def random_selection(population):
             """Select and return a random member of the population."""
             return random.choice(population)
+        
+        def weighted_random_choice(chromosomes):
+            max = sum(chromosome.fitness for chromosome in chromosomes)
+            pick = random.uniform(0, max)
+            current = 0
+            for chromosome in chromosomes:
+                current += chromosome.fitness
+                if current > pick:
+                    return chromosome
 
         def tournament_selection(population):
             """Select a random number of individuals from the population and
@@ -196,7 +205,7 @@ class GeneticAlgorithm(object):
         self.double_crossover_function = double_crossover
         self.uniform_crossover_function = uniform_crossover
         self.mutate_function = mutate
-        self.selection_function = self.tournament_selection
+        self.selection_function = random_selection
 
     def create_initial_population(self):
         """Create members of the first population randomly.
@@ -241,17 +250,19 @@ class GeneticAlgorithm(object):
             child_1, child_2 = parent_1, parent_2
             child_1.parent_fitness, child_2.parent_fitness = (parent_1.fitness, 
                                                               parent_2.fitness)
-
-            can_crossover = random.random() < self.crossover_probability
-            can_mutate = random.random() < self.mutation_probability
-
-            if can_crossover:
-                child_1.genes, child_2.genes = self.single_crossover_function(
-                    parent_1.genes, parent_2.genes)
-
-            if can_mutate:
+            #------------- rollet wheel -----------------#
+            p = random.random
+            p1 = self.mutation_probability
+            p2 = p1 + self.crossover_probability
+            
+            if p < p1: # probabbilty of mutate
                 self.mutate_function(child_1.genes)
                 self.mutate_function(child_2.genes)
+            elif p < p2: # probabbilty of crossover
+                child_1.genes, child_2.genes = self.single_crossover_function(
+                    parent_1.genes, parent_2.genes)
+            #------------- ------------- -----------------#
+            
 
             new_population.append(child_1)
             if len(new_population) < self.population_size:
@@ -319,6 +330,10 @@ class Chromosome(object):
         self.parent_fitness = 0
         self.life_cycle = 0
         self.fitness_const_count = 0
+        self.single_cross_count = 0
+        self.double_cross_count = 0
+        self.uniform_cross_count = 0
+        self.mutate_count = 0
 
     def __repr__(self):
         """Return initialised Chromosome representation in human readable form.
