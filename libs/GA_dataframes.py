@@ -85,14 +85,74 @@ class GeneticAlgorithm(object):
 
 
 
-        def crossover(parent_1, parent_2):                       
+        def single_crossover(parent_1, parent_2):                       
             child_1, child_2 = parent_1, parent_2
             row, col = parent_1.shape
             for r in range(row):
                 crossover_index = (random.randrange(1, col - 1))
                 colt = crossover_index
-                child_1.iloc[r] = np.append(parent_1.iloc[r, :colt],parent_2.iloc[r, colt:])    
-                child_2.iloc[r] = np.append(parent_1.iloc[r , colt:],parent_2.iloc[r, :colt])            
+                child_1.iloc[r] = np.append(parent_1.iloc[r, :colt],
+                                            parent_2.iloc[r, colt:])    
+                child_2.iloc[r] = np.append(parent_1.iloc[r , 
+                                            colt:],parent_2.iloc[r, :colt])            
+            return child_1, child_2
+        
+        def double_crossover(parent_1, parent_2):                       
+            child_1, child_2 = parent_1, parent_2
+            row, col = parent_1.shape
+            for r in range(row):
+                colt1 = (random.randrange(1, col - 1))
+                colt2 = (random.randrange(colt1, col - 1))  
+                 
+                s1 = parent_2.iloc[r, :colt1]
+                s1 = np.append(s1, parent_1.iloc[r, colt1:colt2])
+                s1 = np.append(s1, parent_2.iloc[r, colt2:])
+                child_1.iloc[r] = s1
+                                            
+                s2 = parent_1.iloc[r, :colt1]
+                s2 = np.append(s2, parent_2.iloc[r, colt1:colt2])
+                s2 = np.append(s2, parent_1.iloc[r, colt2:])
+                child_2.iloc[r] = s1         
+            return child_1, child_2
+        
+        def uniform_crossover(parent_1, parent_2):                       
+            child_1, child_2 = parent_1, parent_2
+            row, col = parent_1.shape
+            for r in range(row):
+                colt1 = (random.randrange(1, col - 1))   
+                colt2 = (random.randrange(colt1, col - 1))
+                colt3 = (random.randrange(colt2, col - 1))
+                colt4 = (random.randrange(colt3, col - 1))
+                colt5 = (random.randrange(colt4, col - 1))
+                colt6 = (random.randrange(colt5, col - 1))
+                colt7 = (random.randrange(colt6, col - 1))
+                colt8 = (random.randrange(colt7, col - 1))
+                colt9 = (random.randrange(colt8, col - 1))
+                 
+                s1= parent_2.iloc[r, :colt1]
+                s1 = np.append(s1, parent_1.iloc[r, colt1:colt2])
+                s1 = np.append(s1, parent_2.iloc[r, colt2:colt3])
+                s1 = np.append(s1, parent_1.iloc[r, colt3:colt4])
+                s1 = np.append(s1, parent_2.iloc[r, colt4:colt5])
+                s1 = np.append(s1, parent_1.iloc[r, colt5:colt6])
+                s1 = np.append(s1, parent_2.iloc[r, colt6:colt7])
+                s1 = np.append(s1, parent_1.iloc[r, colt7:colt8])
+                s1 = np.append(s1, parent_2.iloc[r, colt8:colt9])
+                s1 = np.append(s1, parent_1.iloc[r, colt9:])
+                child_1.iloc[r] = s1
+                                               
+                s2= parent_1.iloc[r, :colt1]
+                s2 = np.append(s2, parent_2.iloc[r, colt1:colt2])
+                s2 = np.append(s2, parent_1.iloc[r, colt2:colt3])
+                s2 = np.append(s2, parent_2.iloc[r, colt3:colt4])
+                s2 = np.append(s2, parent_1.iloc[r, colt4:colt5])
+                s2 = np.append(s2, parent_2.iloc[r, colt5:colt6])
+                s2 = np.append(s2, parent_1.iloc[r, colt6:colt7])
+                s2 = np.append(s2, parent_2.iloc[r, colt7:colt8])
+                s2 = np.append(s2, parent_1.iloc[r, colt8:colt9])
+                s2 = np.append(s2, parent_2.iloc[r, colt9:])
+                child_2.iloc[r] = s2
+                
             return child_1, child_2
 
         def mutate(individual):
@@ -132,7 +192,9 @@ class GeneticAlgorithm(object):
         self.tournament_size = self.population_size // 10
         self.random_selection = random_selection
         self.create_individual = create_individual_elitism
-        self.crossover_function = crossover
+        self.single_crossover_function = single_crossover
+        self.double_crossover_function = double_crossover
+        self.uniform_crossover_function = uniform_crossover
         self.mutate_function = mutate
         self.selection_function = self.tournament_selection
 
@@ -151,8 +213,9 @@ class GeneticAlgorithm(object):
         the supplied fitness_function.
         """
         for individual in self.current_generation:
-            individual.fitness = self.fitness_function(
-                individual.genes, self.meta_data)
+            individual.set_fitness(self.fitness_function(individual.genes, 
+                                                         self.meta_data)
+                                  )
 
     def rank_population(self):
         """Sort the population by fitness according to the order defined by
@@ -176,13 +239,14 @@ class GeneticAlgorithm(object):
             parent_2 = copy.deepcopy(selection(self.current_generation))
 
             child_1, child_2 = parent_1, parent_2
-            child_1.fitness, child_2.fitness = 0, 0
+            child_1.parent_fitness, child_2.parent_fitness = (parent_1.fitness, 
+                                                              parent_2.fitness)
 
             can_crossover = random.random() < self.crossover_probability
             can_mutate = random.random() < self.mutation_probability
 
             if can_crossover:
-                child_1.genes, child_2.genes = self.crossover_function(
+                child_1.genes, child_2.genes = self.single_crossover_function(
                     parent_1.genes, parent_2.genes)
 
             if can_mutate:
@@ -221,7 +285,7 @@ class GeneticAlgorithm(object):
         lagr_t = 0.0001
         for g in range(1, self.generations):
             print('---------- Start ---------------')            
-            print('generation-' +str(g) + ' -> start: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
+            print('generation-' +str(g) + ' -> start: ')
             if (g>100):
                 self.crossover_probability = (g/self.generations)
                 self.mutation_probability =  1.0 - (g/self.generations)
@@ -252,8 +316,21 @@ class Chromosome(object):
         """Initialise the Chromosome."""
         self.genes = genes
         self.fitness = 0
+        self.parent_fitness = 0
+        self.life_cycle = 0
+        self.fitness_const_count = 0
 
     def __repr__(self):
         """Return initialised Chromosome representation in human readable form.
         """
         return repr((self.fitness, self.genes))
+    def set_fitness(self, fitness):
+        self.life_cycle += 1
+        #print('life_cycle:' + str(self.life_cycle))
+        self.fitness = fitness
+        if self.parent_fitness == self.fitness :
+            self.fitness_const_count += 1
+            #print('fitness_const_count:' + str(self.fitness_const_count))
+        
+        
+        
