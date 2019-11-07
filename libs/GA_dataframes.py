@@ -281,15 +281,35 @@ class GeneticAlgorithm(object):
             if p < prob_single_cross: 
                 child_1.genes, child_2.genes = self.single_crossover_function(
                     parent_1.genes, parent_2.genes)
+                child_1.single_cross_count, child_2.single_cross_count = 1, 1           
+                child_1.double_cross_count, child_2.double_cross_count = 0, 0
+                child_1.uniform_cross_count, child_2.uniform_cross_count = 0, 0
+                child_1.mutate_count, child_2.mutate_count = 0, 0
+#                print('single_crossover_function')
             elif p < prob_double_cross: 
                 child_1.genes, child_2.genes = self.double_crossover_function(
                     parent_1.genes, parent_2.genes)
+                child_1.single_cross_count, child_2.single_cross_count = 0, 0           
+                child_1.double_cross_count, child_2.double_cross_count = 1, 1
+                child_1.uniform_cross_count, child_2.uniform_cross_count = 0, 0
+                child_1.mutate_count, child_2.mutate_count = 0, 0
+#                print('double_crossover_function')
             elif p < prob_uniform_cross:
                 child_1.genes, child_2.genes = self.uniform_crossover_function(
                     parent_1.genes, parent_2.genes)
+                child_1.single_cross_count, child_2.single_cross_count = 0, 0           
+                child_1.double_cross_count, child_2.double_cross_count = 0, 0
+                child_1.uniform_cross_count, child_2.uniform_cross_count = 1, 1
+                child_1.mutate_count, child_2.mutate_count = 0, 0
+#                print('uniform_crossover_function')
             else:
                 self.mutate_function(child_1.genes)
                 self.mutate_function(child_2.genes)
+                child_1.single_cross_count, child_2.single_cross_count = 0, 0           
+                child_1.double_cross_count, child_2.double_cross_count = 0, 0
+                child_1.uniform_cross_count, child_2.uniform_cross_count = 0, 0
+                child_1.mutate_count, child_2.mutate_count = 1, 1
+#                print('mutate_function')
             #------------- ------------- -----------------#
             
 
