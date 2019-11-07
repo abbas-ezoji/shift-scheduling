@@ -83,8 +83,6 @@ class GeneticAlgorithm(object):
 #                print(individual.loc[101,1])
             return individual
 
-
-
         def single_crossover(parent_1, parent_2):                       
             child_1, child_2 = parent_1, parent_2
             row, col = parent_1.shape
@@ -214,6 +212,10 @@ class GeneticAlgorithm(object):
         for i in range(self.population_size):
             genes = self.create_individual(self.seed_data,self.meta_data, i)            
             individual = Chromosome(genes)
+            individual.single_cross_count = 1            
+            individual.double_cross_count = 0
+            individual.uniform_cross_count = 0
+            individual.mutate_count = 0
             initial_population.append(individual)
         self.current_generation = initial_population
 
@@ -250,17 +252,44 @@ class GeneticAlgorithm(object):
             child_1, child_2 = parent_1, parent_2
             child_1.parent_fitness, child_2.parent_fitness = (parent_1.fitness, 
                                                               parent_2.fitness)
-            #------------- rollet wheel -----------------#
-            p = random.random
-            p1 = self.mutation_probability
-            p2 = p1 + self.crossover_probability
+            parent_single_cross_count = max(parent_1.single_cross_count,
+                                            parent_2.single_cross_count)                
+            parent_double_cross_count = max(parent_1.double_cross_count,
+                                            parent_2.double_cross_count)
+            parent_uniform_cross_count = max(parent_1.uniform_cross_count,
+                                             parent_2.uniform_cross_count)
+            parent_mutate_count = max(parent_1.mutate_count,
+                                      parent_2.mutate_count)
             
-            if p < p1: # probabbilty of mutate
-                self.mutate_function(child_1.genes)
-                self.mutate_function(child_2.genes)
-            elif p < p2: # probabbilty of crossover
+            prob_single_cross  = (0 if parent_single_cross_count else 1)
+            prob_double_cross  = (0 if parent_double_cross_count else 1)
+            prob_uniform_cross = (0 if parent_uniform_cross_count else 1)
+            prob_mutate        = (0 if parent_mutate_count else 1)
+            sum_all_prob = (prob_single_cross+prob_double_cross+
+                            prob_uniform_cross+prob_mutate)
+            prob_single_cross  = prob_single_cross/sum_all_prob
+            prob_double_cross  = prob_double_cross/sum_all_prob
+            prob_uniform_cross = prob_uniform_cross/sum_all_prob
+            prob_mutate        = prob_mutate/sum_all_prob
+            #------------- rollet wheel -----------------#
+            p = random.random()            
+            prob_single_cross  = prob_single_cross
+            prob_double_cross  = prob_single_cross + prob_double_cross
+            prob_uniform_cross = prob_double_cross + prob_uniform_cross
+            prob_mutate        = prob_uniform_cross+ prob_mutate
+            
+            if p < prob_single_cross: 
                 child_1.genes, child_2.genes = self.single_crossover_function(
                     parent_1.genes, parent_2.genes)
+            elif p < prob_double_cross: 
+                child_1.genes, child_2.genes = self.double_crossover_function(
+                    parent_1.genes, parent_2.genes)
+            elif p < prob_uniform_cross:
+                child_1.genes, child_2.genes = self.uniform_crossover_function(
+                    parent_1.genes, parent_2.genes)
+            else:
+                self.mutate_function(child_1.genes)
+                self.mutate_function(child_2.genes)
             #------------- ------------- -----------------#
             
 
