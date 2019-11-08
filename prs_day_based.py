@@ -197,6 +197,7 @@ def calc_day_const (individual,meta_data):
 #    cost = np.mean(df['diff_norm'])
     df['diff_norm'] = df['diff_norm']**2
     cost = np.sum(df['diff_norm']) / len(df)
+#    cost = np.max(df['diff_norm']) / len(df)
 #    print('cost: ' + str(cost))
     return cost
 
@@ -251,7 +252,7 @@ def fitness (individual, meta_data):
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=50,
+                          generations=500,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
@@ -299,18 +300,18 @@ df = pd.melt(sol_df.reset_index(),
              value_name='ShiftCode')
 df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
 #######################################################
-prs_cons = df.groupby(['PersonnelBaseId',
+cons_prs = df.groupby(['PersonnelBaseId',
                       'prs_typ_id',
                       'EfficiencyRolePoint',
                       'RequirementWorkMins_esti',
                       
                      ]).sum().drop(columns=['ShiftCode', 'StartTime', 
                                             'EndTime', 'ShiftTypeID'])
-prs_cons = prs_cons.reset_index(level=3)
-prs_cons['diff'] = (prs_cons['RequirementWorkMins_esti'] - prs_cons['Length'])
+cons_prs = cons_prs.reset_index(level=3)
+cons_prs['diff'] = (cons_prs['RequirementWorkMins_esti'] - cons_prs['Length'])
 #########################################################3
 
-day_cons = df[df['Length']>0].groupby(['Day',
+cons_day = df[df['Length']>0].groupby(['Day',
                                        'prs_typ_id',
                                        'ShiftTypeID']).agg(
                               prs_count = pd.NamedAgg(column='Length', 
@@ -319,13 +320,13 @@ day_cons = df[df['Length']>0].groupby(['Day',
                                           aggfunc='sum'),
                             )
                               
-day_cons = day_cons.merge(typid_req_day, 
+cons_day = cons_day.merge(typid_req_day, 
                           left_on=['Day','prs_typ_id','ShiftTypeID'], 
                           right_on=['Day','prs_typ_id','ShiftTypeID'], 
                           how='right') 
-day_cons.fillna(0,inplace=True)            
-day_cons['diff_max'] = abs(day_cons['prs_count'] - day_cons['ReqMaxCount'])
-day_cons['diff_min'] = abs(day_cons['prs_count'] - day_cons['ReqMinCount'])  
-day_cons['diff'] = day_cons[['diff_max','diff_min']].apply(np.min, axis=1) 
-day_cons.sort_index(axis=0, level=[0,1,2], ascending=True, inplace=True)
+cons_day.fillna(0,inplace=True)            
+cons_day['diff_max'] = abs(cons_day['prs_count'] - cons_day['ReqMaxCount'])
+cons_day['diff_min'] = abs(cons_day['prs_count'] - cons_day['ReqMinCount'])  
+cons_day['diff'] = cons_day[['diff_max','diff_min']].apply(np.min, axis=1) 
+cons_day.sort_index(axis=0, level=[0,1,2], ascending=True, inplace=True)
 

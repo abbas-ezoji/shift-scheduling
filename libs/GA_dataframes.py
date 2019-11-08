@@ -57,6 +57,10 @@ class GeneticAlgorithm(object):
         self.mutation_probability = mutation_probability
         self.elitism = elitism
         self.maximise_fitness = maximise_fitness
+        self.single_count = 0
+        self.double_count = 0
+        self.uniform_count = 0
+        self.mutate_count = 0
 
         self.current_generation = []
 
@@ -67,22 +71,7 @@ class GeneticAlgorithm(object):
                                                    size=len(individual))
             return individual
         
-        def create_individual_elitism(data,meta_data, count):  
-            individual = data[:]
-            
-            row, col = individual.shape
-            if (count==0 and self.elitism):
-                individual = data[:]                                                          
-            else:
-                for r in range(row):
-                    crossover_index = (random.randrange(1, col - 1))
-                    colt = crossover_index
-                    individual.iloc[r] = np.append(individual.iloc[r, colt:],
-                                                   individual.iloc[r, :colt]) 
-#                print('else: ')
-#                print(individual.loc[101,1])
-            return individual
-
+        
         def single_crossover(parent_1, parent_2):                       
             child_1, child_2 = parent_1, parent_2
             row, col = parent_1.shape
@@ -174,11 +163,11 @@ class GeneticAlgorithm(object):
             """Select and return a random member of the population."""
             return random.choice(population)
         
-        def weighted_random_choice(chromosomes):
-            max = sum(chromosome.fitness for chromosome in chromosomes)
+        def weighted_random_choice(population):
+            max = sum(chromosome.fitness for chromosome in population)
             pick = random.uniform(0, max)
             current = 0
-            for chromosome in chromosomes:
+            for chromosome in population:
                 current += chromosome.fitness
                 if current > pick:
                     return chromosome
@@ -198,27 +187,32 @@ class GeneticAlgorithm(object):
         self.tournament_selection = tournament_selection
         self.tournament_size = self.population_size // 10
         self.random_selection = random_selection
-        self.create_individual = create_individual_elitism
+        self.create_individual = create_individual
         self.single_crossover_function = single_crossover
         self.double_crossover_function = double_crossover
         self.uniform_crossover_function = uniform_crossover
         self.mutate_function = mutate
-        self.selection_function = random_selection
+        self.selection_function = self.tournament_selection
 
     def create_initial_population(self):
         """Create members of the first population randomly.
         """
         initial_population = []
+        individual = Chromosome(self.seed_data)
+        elite = copy.deepcopy(individual)
         for i in range(self.population_size):
-            genes = self.create_individual(self.seed_data,self.meta_data, i)            
-            individual = Chromosome(genes)
-            individual.single_cross_count = 1            
-            individual.double_cross_count = 0
-            individual.uniform_cross_count = 0
-            individual.mutate_count = 0
+            genes = self.create_individual(self.seed_data,self.meta_data)            
+            individual = Chromosome(genes)                              
+            individual.life_cycle = 1                       
+           
+            self.single_count += 1
             initial_population.append(individual)
-        self.current_generation = initial_population
-
+        
+        if self.elitism:
+            initial_population[0] = elite
+        self.current_generation = initial_population                  
+        
+        
     def calculate_population_fitness(self):
         """Calculate the fitness of every member of the given population using
         the supplied fitness_function.
@@ -234,7 +228,7 @@ class GeneticAlgorithm(object):
         """
         self.current_generation.sort(
             key=attrgetter('fitness'), reverse=self.maximise_fitness)
-        print('best cost: ' + str(self.current_generation[0].fitness))
+        
         
 
     def create_new_population(self):
@@ -252,6 +246,11 @@ class GeneticAlgorithm(object):
             child_1, child_2 = parent_1, parent_2
             child_1.parent_fitness, child_2.parent_fitness = (parent_1.fitness, 
                                                               parent_2.fitness)
+            #-------------------- use tabu search ----------------------------#
+            ''' if parent_1 or parent_2 use any opertator then these operators
+                shoud not play for create child_1 and child_2.
+                    << Tabu Search by last state of serach operation >>
+            '''
             parent_single_cross_count = max(parent_1.single_cross_count,
                                             parent_2.single_cross_count)                
             parent_double_cross_count = max(parent_1.double_cross_count,
@@ -261,54 +260,64 @@ class GeneticAlgorithm(object):
             parent_mutate_count = max(parent_1.mutate_count,
                                       parent_2.mutate_count)
             
-            prob_single_cross  = (0 if parent_single_cross_count else 1)
-            prob_double_cross  = (0 if parent_double_cross_count else 1)
-            prob_uniform_cross = (0 if parent_uniform_cross_count else 1)
-            prob_mutate        = (0 if parent_mutate_count else 1)
+            prob_single_cross  = int(parent_single_cross_count == 0)
+            prob_double_cross  = int(parent_double_cross_count == 0)
+            prob_uniform_cross = int(parent_uniform_cross_count == 0)
+            prob_mutate        = int(parent_mutate_count == 0)
             sum_all_prob = (prob_single_cross+prob_double_cross+
                             prob_uniform_cross+prob_mutate)
+#            sum_all_prob = 0.00001 if sum_all_prob==0 else sum_all_prob
             prob_single_cross  = prob_single_cross/sum_all_prob
             prob_double_cross  = prob_double_cross/sum_all_prob
             prob_uniform_cross = prob_uniform_cross/sum_all_prob
             prob_mutate        = prob_mutate/sum_all_prob
             #------------- rollet wheel -----------------#
             p = random.random()            
-            prob_single_cross  = prob_single_cross
-            prob_double_cross  = prob_single_cross + prob_double_cross
-            prob_uniform_cross = prob_double_cross + prob_uniform_cross
-            prob_mutate        = prob_uniform_cross+ prob_mutate
+            cdf_prob_single_cross  =  prob_single_cross
+            cdf_prob_double_cross  = (prob_single_cross + 
+                                      prob_double_cross 
+                                      if prob_double_cross else 0) 
+            cdf_prob_uniform_cross = (prob_single_cross + 
+                                      prob_double_cross + 
+                                      prob_uniform_cross
+                                      if prob_uniform_cross else 0) 
+            cdf_prob_mutate        = (prob_single_cross + 
+                                      prob_double_cross + 
+                                      prob_uniform_cross+ 
+                                      prob_mutate
+                                      if prob_mutate else 0) 
             
-            if p < prob_single_cross: 
+            if p < cdf_prob_single_cross: 
                 child_1.genes, child_2.genes = self.single_crossover_function(
                     parent_1.genes, parent_2.genes)
-                child_1.single_cross_count, child_2.single_cross_count = 1, 1           
-                child_1.double_cross_count, child_2.double_cross_count = 0, 0
-                child_1.uniform_cross_count, child_2.uniform_cross_count = 0, 0
-                child_1.mutate_count, child_2.mutate_count = 0, 0
+                child_1.set_init_count()
+                child_2.set_init_count()
+                child_1.single_cross_count, child_2.single_cross_count = 1, 1                           
+                self.single_count += 1
 #                print('single_crossover_function')
-            elif p < prob_double_cross: 
+            elif p < cdf_prob_double_cross: 
                 child_1.genes, child_2.genes = self.double_crossover_function(
-                    parent_1.genes, parent_2.genes)
-                child_1.single_cross_count, child_2.single_cross_count = 0, 0           
-                child_1.double_cross_count, child_2.double_cross_count = 1, 1
-                child_1.uniform_cross_count, child_2.uniform_cross_count = 0, 0
-                child_1.mutate_count, child_2.mutate_count = 0, 0
+                    parent_1.genes, parent_2.genes)          
+                child_1.set_init_count()
+                child_2.set_init_count()                
+                child_1.double_cross_count, child_2.double_cross_count = 1, 1                
+                self.double_count += 1
 #                print('double_crossover_function')
-            elif p < prob_uniform_cross:
+            elif p < cdf_prob_uniform_cross:
                 child_1.genes, child_2.genes = self.uniform_crossover_function(
-                    parent_1.genes, parent_2.genes)
-                child_1.single_cross_count, child_2.single_cross_count = 0, 0           
-                child_1.double_cross_count, child_2.double_cross_count = 0, 0
-                child_1.uniform_cross_count, child_2.uniform_cross_count = 1, 1
-                child_1.mutate_count, child_2.mutate_count = 0, 0
+                    parent_1.genes, parent_2.genes) 
+                child_1.set_init_count()
+                child_2.set_init_count()
+                child_1.uniform_cross_count, child_2.uniform_cross_count = 1, 1                
+                self.uniform_count += 1
 #                print('uniform_crossover_function')
             else:
                 self.mutate_function(child_1.genes)
                 self.mutate_function(child_2.genes)
-                child_1.single_cross_count, child_2.single_cross_count = 0, 0           
-                child_1.double_cross_count, child_2.double_cross_count = 0, 0
-                child_1.uniform_cross_count, child_2.uniform_cross_count = 0, 0
+                child_1.set_init_count()
+                child_2.set_init_count()
                 child_1.mutate_count, child_2.mutate_count = 1, 1
+                self.mutate_count += 1
 #                print('mutate_function')
             #------------- ------------- -----------------#
             
@@ -341,20 +350,18 @@ class GeneticAlgorithm(object):
     def run(self):
         """Run (solve) the Genetic Algorithm."""
         print('start: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
-        self.create_first_generation()
-        lagr_t = 0.0001
+        self.create_first_generation()       
         for g in range(1, self.generations):
             print('---------- Start ---------------')            
-            print('generation-' +str(g) + ' -> start: ')
-            if (g>100):
-                self.crossover_probability = (g/self.generations)
-                self.mutation_probability =  1.0 - (g/self.generations)
-            self.create_next_generation()
-            if (g/100 - g//100 == 0):
-                csv_name = './output/out_GA_' + str(g/100) + '.csv'
-                self.current_generation[0].genes.to_csv(csv_name)
-            print('----------- End ----------------')
-
+            print('generation-' +str(g) + ' -> start: ')                        
+            self.create_next_generation()  
+            print('best cost: ' + str(self.current_generation[0].fitness))
+            print('single_count:' +str(self.single_count))
+            print('double_count:' +str(self.double_count))
+            print('uniform_count:' +str(self.uniform_count))
+            print('mutate_count:' +str(self.mutate_count))
+        print('----------- End ----------------')
+        print('end: '+ strftime("%Y-%m-%d %H:%M:%S:%SS", gmtime()))
     def best_individual(self):
         """Return the individual with the best fitness in the current
         generation.
@@ -383,6 +390,7 @@ class Chromosome(object):
         self.double_cross_count = 0
         self.uniform_cross_count = 0
         self.mutate_count = 0
+        self.elit = 0
 
     def __repr__(self):
         """Return initialised Chromosome representation in human readable form.
@@ -395,6 +403,11 @@ class Chromosome(object):
         if self.parent_fitness == self.fitness :
             self.fitness_const_count += 1
             #print('fitness_const_count:' + str(self.fitness_const_count))
+    def set_init_count(self):
+        self.single_cross_count = 0
+        self.double_cross_count = 0
+        self.uniform_cross_count = 0
+        self.mutate_count = 0
         
         
         

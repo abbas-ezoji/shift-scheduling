@@ -70,7 +70,8 @@ class data(object):
         last_df = pd.read_sql(query_last,self.sql_conn)
         last_cost = last_df['Cost'].min()        
         if(last_cost > sol_fitness):
-            query_delete = '''delete from PersonnelShiftDateAssignments 
+            query_delete = '''update PersonnelShiftDateAssignments 
+                              set Rank +=1 
                               where WorkSectionId ={0} and YearWorkingPeriod = {1}
                             '''.format(work_sction_id,year_working_period)
             cursor.execute(query_delete)
