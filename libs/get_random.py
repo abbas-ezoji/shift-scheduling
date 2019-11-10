@@ -20,7 +20,8 @@ def get_rollet_wheel(prob_list, rank_list):
 def get_best_first_rank(conn_str, query_gene_last):    
     sql_conn = pyodbc.connect(conn_str)        
     last_df = pd.read_sql(query_gene_last, sql_conn)
-    
+    if last_df.empty:
+        return 0
     min_diff = min(last_df['life_cycle'])
     last_df['life_cycle'] = last_df['life_cycle'] / min_diff
     

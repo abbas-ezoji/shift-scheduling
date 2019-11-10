@@ -39,6 +39,7 @@ class GeneticAlgorithm(object):
                  crossover_probability=0.8,
                  mutation_probability=0.2,
                  elitism=True,
+                 by_parent=False,
                  maximise_fitness=True):
         """Instantiate the Genetic Algorithm.
         :param seed_data: input data to the Genetic Algorithm
@@ -56,6 +57,7 @@ class GeneticAlgorithm(object):
         self.crossover_probability = crossover_probability
         self.mutation_probability = mutation_probability
         self.elitism = elitism
+        self.by_parent = by_parent
         self.maximise_fitness = maximise_fitness
         self.single_count = 0
         self.double_count = 0
@@ -63,14 +65,7 @@ class GeneticAlgorithm(object):
         self.mutate_count = 0
 
         self.current_generation = []
-
-        def create_individual(data,meta_data):  
-            individual = data[:]
-            for col in individual.columns :                  
-                individual[col] = np.random.choice(meta_data.index.values.tolist(),
-                                                   size=len(individual))
-            return individual
-        
+             
         
         def single_crossover(parent_1, parent_2):                       
             child_1, child_2 = parent_1, parent_2
@@ -158,7 +153,19 @@ class GeneticAlgorithm(object):
                                                     0.05,0.15,0.35,0.45],
                                                  size=1)
         
-
+        def create_individual(data,meta_data):  
+            individual = data[:]
+            shift_list = meta_data.index.values.tolist()
+            for col in individual.columns :                  
+                individual[col] = np.random.choice(shift_list,
+                                                   size=len(individual))
+            return individual
+        
+        def create_individual_elit(data,meta_data):  
+            individual = data[:]
+            mutate(individual)         
+            return individual
+        
         def random_selection(population):
             """Select and return a random member of the population."""
             return random.choice(population)
@@ -187,7 +194,8 @@ class GeneticAlgorithm(object):
         self.tournament_selection = tournament_selection
         self.tournament_size = self.population_size // 10
         self.random_selection = random_selection
-        self.create_individual = create_individual
+        self.create_individual = create_individual_elit if self.by_parent \
+                                                       else create_individual
         self.single_crossover_function = single_crossover
         self.double_crossover_function = double_crossover
         self.uniform_crossover_function = uniform_crossover

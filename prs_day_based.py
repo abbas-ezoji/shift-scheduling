@@ -37,7 +37,7 @@ query_gene_last = '''SELECT DISTINCT
                            ,[UsedParentCount]
                      FROM [PersonnelShiftDateAssignments]                         
                      WHERE WorkSectionId = {0} AND YearWorkingPeriod = {1}                                
-                   '''.format(work_sction_id,year_working_period)          
+                   '''.format(work_sction_id,year_working_period)                        
 parent_rank = get_rank(conn_str, query_gene_last)
 query_gene_last ='''SELECT S.[PersonnelBaseId]                 
                           ,S.[YearWorkingPeriod]
@@ -264,6 +264,7 @@ ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
+                          by_parent=True if is_new==0 else False,
                           maximise_fitness=False)
  
  # -----------------------run ga----------------------------------------------# 
@@ -340,4 +341,5 @@ cons_day['diff_max'] = abs(cons_day['prs_count'] - cons_day['ReqMaxCount'])
 cons_day['diff_min'] = abs(cons_day['prs_count'] - cons_day['ReqMinCount'])  
 cons_day['diff'] = cons_day[['diff_max','diff_min']].apply(np.min, axis=1) 
 cons_day.sort_index(axis=0, level=[0,1,2], ascending=True, inplace=True)
+
 
