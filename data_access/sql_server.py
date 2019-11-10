@@ -33,11 +33,12 @@ class data(object):
         sql_conn = self.sql_conn
         return sql_conn
         
-    def get_chromosom(self):
+    def get_chromosom(self, work_sction_id, year_working_period):        
         chromosom_df = pd.read_sql(self.query_gene_last, self.sql_conn)
         if(chromosom_df.empty):              
             self.new = 1
-            chromosom_df = pd.read_sql(self.query_gene_new, self.sql_conn)
+            chromosom_df = pd.read_sql(self.query_gene_new, self.sql_conn)        
+            
         return chromosom_df
     
     def get_personnel(self):
@@ -62,24 +63,46 @@ class data(object):
     def is_new(self):
         return self.new
     def insert_sol(self, sol_tbl, personnel_df, sol_fitness,
-                   work_sction_id,year_working_period): 
-        cursor = self.cursor  
-        query_last = '''select * from PersonnelShiftDateAssignments 
-                          where WorkSectionId ={0} and YearWorkingPeriod = {1}
-                        '''.format(work_sction_id,year_working_period)
-        last_df = pd.read_sql(query_last,self.sql_conn)
-        last_cost = last_df['Cost'].min()        
-        if(last_cost > sol_fitness):
-            query_delete = '''update PersonnelShiftDateAssignments 
-                              set Rank +=1 
-                              where WorkSectionId ={0} and YearWorkingPeriod = {1}
-                            '''.format(work_sction_id,year_working_period)
-            cursor.execute(query_delete)
+                   work_sction_id,year_working_period,
+                   rank): 
+        cursor = self.cursor        
+        #------------------------ insert new solution ------------------------#
         for i in range(len(sol_tbl)):
             cursor.execute('''insert into PersonnelShiftDateAssignments  
-                               values (?, ?, ?, ?, ?, ?, ?, ?)'''
+                               values (?, ?, ?, ?, ?, ?, ?, ?, ?)'''
                                ,(sol_tbl[i])
-                               )                
+                               )  
+        #---------------- update UsedParentCount of parent solution ----------#
+        cursor.execute('''UPDATE [PersonnelShiftDateAssignments]
+                          SET [UsedParentCount] += 1
+                          FROM [PersonnelShiftDateAssignments] 
+                          WHERE WorkSectionId = {0} 
+                                AND YearWorkingPeriod = {1}
+                                AND RANK = {2}                          
+                       '''.format(work_sction_id,year_working_period,rank))            
+        #---------------- update Rank of last solutions ----------------------#
+        cursor.execute('''UPDATE [PersonnelShiftDateAssignments]
+                          SET [Rank] = T.[Rank]
+                          FROM [PersonnelShiftDateAssignments] JOIN
+                        	 (SELECT distinct
+                        		   ROW_NUMBER() over(order by [Cost]) [Rank]
+                        		  ,[Cost]      
+                        		  ,[WorkSectionId]
+                        		  ,[YearWorkingPeriod]
+                        	  FROM [PersonnelShiftDateAssignments]
+                        	  WHERE WorkSectionId = {0} 
+                                    AND YearWorkingPeriod = {1}
+                        	  GROUP BY
+                        		   [Cost]      
+                        		  ,[WorkSectionId]
+                        		  ,[YearWorkingPeriod]
+                        	) T ON 
+                            [PersonnelShiftDateAssignments].YearWorkingPeriod = 
+                            t.YearWorkingPeriod AND
+                            [PersonnelShiftDateAssignments].WorkSectionId = 
+                            t.WorkSectionId AND
+                            [PersonnelShiftDateAssignments].Cost = t.Cost                           
+                       '''.format(work_sction_id,year_working_period))            
 # =============================================================================
 #         for prs in personnel_df.index:
 #             cursor.execute('''update [Personnel]

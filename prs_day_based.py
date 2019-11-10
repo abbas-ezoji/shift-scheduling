@@ -11,6 +11,7 @@ from data_access.sql_server import data
 from libs import GA_dataframes 
 import datetime
 from time import gmtime, strftime
+from libs.get_random import get_best_first_rank as get_rank
 
 work_sction_id = 1
 year_working_period = 139806
@@ -26,25 +27,31 @@ conn_str = '''DRIVER={SQL Server Native Client 11.0};
              UID=sa;
              PWD=1qaz!QAZ
           '''
+query_gene_last = '''SELECT DISTINCT   
+                            [Rank]
+                           ,[Cost]      
+                           ,[WorkSectionId]
+                           ,[YearWorkingPeriod]
+                           ,[EndTime]
+                           ,DATEDIFF(SECOND,EndTime,GETDATE())life_cycle	 
+                           ,[UsedParentCount]
+                     FROM [PersonnelShiftDateAssignments]                         
+                     WHERE WorkSectionId = {0} AND YearWorkingPeriod = {1}                                
+                   '''.format(work_sction_id,year_working_period)          
+parent_rank = get_rank(conn_str, query_gene_last)
 query_gene_last ='''SELECT S.[PersonnelBaseId]                 
                           ,S.[YearWorkingPeriod]
                           ,S.[Day]      
                       	  ,ShiftId as ShiftCode 
                     FROM 
-                    	[PersonnelShiftDateAssignments] S 
-                        JOIN (SELECT  [PersonnelBaseId]
-                                     ,[YearWorkingPeriod]
-                                     ,MIN(Cost) Cost
-                                     ,MAX(EndTime) EndTime
-                			  FROM PersonnelShiftDateAssignments
-                			  GROUP BY [PersonnelBaseId],[YearWorkingPeriod]
-                			  )T ON T.PersonnelBaseId = S.PersonnelBaseId 
-                                 AND T.YearWorkingPeriod = S.YearWorkingPeriod
-                				 AND T.Cost = S.Cost 
-                        WHERE                           	
-                        	 WorkSectionId = {0}                      
-                        	 AND S.YearWorkingPeriod = {1}                    
-                 '''.format(work_sction_id,year_working_period)
+                    	[PersonnelShiftDateAssignments] S
+                    WHERE                           	
+                        WorkSectionId = {0}                      
+                        AND S.YearWorkingPeriod = {1}   
+                        AND S.RANK = {2}
+                 '''.format(work_sction_id,
+                            year_working_period,
+                            parent_rank)
                     
 query_gene_new = '''SELECT 
                          PersonnelBaseId     					 
@@ -103,7 +110,8 @@ db = data(conn_str =  conn_str,
           query_shift_req=query_shift_req
          )
 sql_conn = db.get_sql_conn()
-chromosom_df = pd.DataFrame(db.get_chromosom())
+chromosom_df = pd.DataFrame(db.get_chromosom(work_sction_id, 
+                                             year_working_period))
 personnel_df = pd.DataFrame(db.get_personnel())
 shift_df = pd.DataFrame(db.get_shift())
 day_req_df = pd.DataFrame(db.get_day_req())
@@ -270,6 +278,7 @@ sol_tbl = sol_tbl.reset_index()
 sol_tbl['Rank'] = 1
 sol_tbl['Cost'] = sol_fitness
 sol_tbl['EndTime'] =  strftime('%Y-%m-%d %H:%M:%S')
+sol_tbl['UsedParentCount'] =  0
 sol_tbl['WorkSectionId'] = work_sction_id
 sol_tbl['YearWorkingPeriod'] = year_working_period
 sol_tbl = sol_tbl.drop(columns=['prs_typ_id', 
@@ -278,7 +287,9 @@ sol_tbl = sol_tbl.drop(columns=['prs_typ_id',
 sol_tbl = sol_tbl.values.tolist()
 # ----------------------- inserting ------------------------------------------# 
 #db.delete_last_sol(work_sction_id,year_working_period)
-db.insert_sol(sol_tbl, personnel_df, sol_fitness,work_sction_id,year_working_period)
+db.insert_sol(sol_tbl, personnel_df, 
+              sol_fitness,work_sction_id,year_working_period,
+              parent_rank)
 #-------------------- output show --------------------------------------------#
 #########################################################
 sht = shift_df.reset_index()
