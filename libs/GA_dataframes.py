@@ -9,6 +9,7 @@ from operator import attrgetter
 import numpy as np
 from time import gmtime, strftime
 import matplotlib.pyplot as plt
+from libs.get_random import get_rollet_wheel as rollet
 
 from six.moves import range
 
@@ -40,7 +41,9 @@ class GeneticAlgorithm(object):
                  mutation_probability=0.2,
                  elitism=True,
                  by_parent=False,
-                 maximise_fitness=True):
+                 maximise_fitness=True,
+                 initial_elit_prob=0.5,
+                 initial_random_prob=0.5):
         """Instantiate the Genetic Algorithm.
         :param seed_data: input data to the Genetic Algorithm
         :type seed_data: list of objects
@@ -63,6 +66,8 @@ class GeneticAlgorithm(object):
         self.double_count = 0
         self.uniform_count = 0
         self.mutate_count = 0
+        self.initial_elit_prob=initial_elit_prob,
+        self.initial_random_prob = initial_random_prob
 
         self.current_generation = []
              
@@ -161,9 +166,17 @@ class GeneticAlgorithm(object):
                                                    size=len(individual))
             return individual
         
-        def create_individual_elit(data,meta_data):  
+        def create_individual_local_search(data,meta_data):  
             individual = data[:]
-            mutate(individual)         
+            p = random.random()
+            if p < 0.25:
+                individual, _ = single_crossover(individual, individual)
+            elif p < 0.5:
+                individual, _ = double_crossover(individual, individual)
+            elif p < 0.75:
+                individual, _ = uniform_crossover(individual, individual)                
+            else:
+                mutate(individual)         
             return individual
         
         def random_selection(population):
@@ -194,30 +207,29 @@ class GeneticAlgorithm(object):
         self.tournament_selection = tournament_selection
         self.tournament_size = self.population_size // 10
         self.random_selection = random_selection
-        self.create_individual = create_individual_elit if self.by_parent \
-                                                       else create_individual
+        self.create_individual = create_individual
         self.single_crossover_function = single_crossover
         self.double_crossover_function = double_crossover
         self.uniform_crossover_function = uniform_crossover
         self.mutate_function = mutate
-        self.selection_function = self.tournament_selection
+        self.selection_function = self.tournament_selection        
 
     def create_initial_population(self):
         """Create members of the first population randomly.
         """
         initial_population = []
         individual = Chromosome(self.seed_data)
-        elite = copy.deepcopy(individual)
+        parent = copy.deepcopy(individual)
+               
         for i in range(self.population_size):
-            genes = self.create_individual(self.seed_data,self.meta_data)            
+            genes = self.create_individual(self.seed_data,self.meta_data)                     
             individual = Chromosome(genes)                              
-            individual.life_cycle = 1                       
-           
+            individual.life_cycle = 1                                  
             self.single_count += 1
             initial_population.append(individual)
         
-        if self.elitism:
-            initial_population[0] = elite
+        if self.by_parent:
+            initial_population[0] = parent
         self.current_generation = initial_population                  
         
         

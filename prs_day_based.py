@@ -10,13 +10,13 @@ import pandas as pd
 from data_access.sql_server import data 
 from libs import GA_dataframes 
 import datetime
-from time import gmtime, strftime
+from time import strftime, gmtime
 from libs.get_random import get_best_first_rank as get_rank
 
 work_sction_id = 1
 year_working_period = 139806
 
-PersianYear = int(year_working_period / 100)
+PersianYear  = int(year_working_period / 100)
 PersianMonth = int(year_working_period % 100)
 # ----------------------- get data -------------------------------------------#
 conn_str = '''DRIVER={SQL Server Native Client 11.0};
@@ -39,6 +39,7 @@ query_gene_last = '''SELECT DISTINCT
                      WHERE WorkSectionId = {0} AND YearWorkingPeriod = {1}                                
                    '''.format(work_sction_id,year_working_period)                        
 parent_rank = get_rank(conn_str, query_gene_last)
+by_parent = True 
 query_gene_last ='''SELECT S.[PersonnelBaseId]                 
                           ,S.[YearWorkingPeriod]
                           ,S.[Day]      
@@ -185,7 +186,7 @@ diff_req_rec['diff_mean'] = (diff_req_rec['req_mean'] -
                             diff_req_rec['all_rec'] )/diff_req_rec['count_prs']
 #diff_req_rec = diff_req_rec.reset_index()
 #------------------------fitness_day_const function for day-------------------# 
-def calc_day_const (individual,meta_data):   
+def calc_day_const (individual,meta_data):  
     df = individual           
     df = df[df['Length']>0].groupby(['Day',
                                      'prs_typ_id',
@@ -256,22 +257,29 @@ def fitness (individual, meta_data):
     prs_const = 0.2*calc_prs_const(df, diff_req_rec)
     cost = day_const + prs_const
     return cost
-# -----------------------Define GA--------------------------------------------#   
+# -----------------------Define GA--------------------------------------------#        
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=500,
+                          generations=1000,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,
-                          by_parent=True if is_new==0 else False,
+                          by_parent=by_parent,
                           maximise_fitness=False)
  
- # -----------------------run ga----------------------------------------------# 
+ # ----------------------- run ga --------------------------------------------# 
 ga.fitness_function = fitness         # set the GA's fitness function
-start_time = datetime.datetime.now()
+start_time = gmtime()
 ga.run()                                    # run the GA
-start_time = datetime.datetime.now()
+end_time = gmtime()
+time_consum_hour   = end_time[3] - start_time[3]
+time_consum_minute = end_time[4] - start_time[4]
+time_consum_second = end_time[5] - start_time[5]
+print('time_consum : ' + str(time_consum_hour) + ':'+ 
+                         str(time_consum_minute) + ':'+ 
+                         str(time_consum_second)
+                        )
 sol_fitness, sol_df = ga.best_individual()
 sol_tbl = sol_df.stack()
 sol_tbl = sol_tbl.reset_index()
