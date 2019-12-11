@@ -93,7 +93,8 @@ class data(object):
                           FROM [PersonnelShiftDateAssignments] JOIN
                         	 (SELECT distinct
                         		   ROW_NUMBER() over(order by [Cost],[EndTime]) [Rank]
-                        		  ,[Cost]      
+                        		  ,[Cost] 
+                                  ,[EndTime]  
                         		  ,[WorkSectionId]
                         		  ,[YearWorkingPeriod]
                         	  FROM [PersonnelShiftDateAssignments]

@@ -382,5 +382,3 @@ cons_day['diff_max'] = abs(cons_day['prs_count'] - cons_day['ReqMaxCount'])
 cons_day['diff_min'] = abs(cons_day['prs_count'] - cons_day['ReqMinCount'])  
 cons_day['diff'] = cons_day[['diff_max','diff_min']].apply(np.min, axis=1) 
 cons_day.sort_index(axis=0, level=[0,1,2], ascending=True, inplace=True)
-
-
