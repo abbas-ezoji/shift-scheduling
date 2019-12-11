@@ -102,13 +102,29 @@ query_shift_req = '''SELECT [PersianDayOfMonth] AS Day
                     ORDER BY 
                     	WorkSectionId,D.Date
                     	,PersonnelTypeReqID,ShiftTypeID                        
-                  '''.format(PersianYear, PersianMonth, work_sction_id)             
+                  '''.format(PersianYear, PersianMonth, work_sction_id)      
+query_prs_req = '''SELECT  [PersonnelBaseId]
+                          ,[YearWorkingPeriod]
+                          ,[WorkSectionId]
+                          ,[Day]
+                          ,[ShiftTypeID]
+                          ,[Value]
+                  FROM [PersonnelRequest]
+                  WHERE [WorkSectionId] = {0}
+                        and [YearWorkingPeriod] = {1}
+                  ORDER BY[PersonnelBaseId]
+                          ,[YearWorkingPeriod]
+                          ,[Day]
+                          ,[ShiftTypeID]
+                '''.format(work_sction_id,year_working_period)
+                     
 db = data(conn_str =  conn_str,
           query_gene_last = query_gene_last,
           query_gene_new = query_gene_new,
           query_personnel=query_personnel,
           query_shift=query_shift,
-          query_shift_req=query_shift_req
+          query_shift_req=query_shift_req,
+          query_prs_req=query_prs_req
          )
 sql_conn = db.get_sql_conn()
 chromosom_df = pd.DataFrame(db.get_chromosom(work_sction_id, 
@@ -116,6 +132,7 @@ chromosom_df = pd.DataFrame(db.get_chromosom(work_sction_id,
 personnel_df = pd.DataFrame(db.get_personnel())
 shift_df = pd.DataFrame(db.get_shift())
 day_req_df = pd.DataFrame(db.get_day_req())
+prs_req_df = pd.DataFrame(db.get_prs_req())
 is_new = db.is_new()
 # ----------------------- gene pivoted ---------------------------------------#
 chromosom_df = chromosom_df.merge(personnel_df, 
@@ -185,7 +202,7 @@ diff_req_rec['diff_max'] = (diff_req_rec['req_max'] -
 diff_req_rec['diff_mean'] = (diff_req_rec['req_mean'] - 
                             diff_req_rec['all_rec'] )/diff_req_rec['count_prs']
 #diff_req_rec = diff_req_rec.reset_index()
-#------------------------fitness_day_const function for day-------------------# 
+#------------------------ Consttraint day_const function for day -------------# 
 def calc_day_const (individual,meta_data):  
     df = individual           
     df = df[df['Length']>0].groupby(['Day',
@@ -210,7 +227,7 @@ def calc_day_const (individual,meta_data):
 #    print('cost: ' + str(cost))
     return cost
 
-#------------------------fitness_prs_const function---------------------------# 
+#------------------------ Consttraint prs_const function for day -------------# 
 def calc_prs_const (individual, meta_data):
     df = individual    
     df = df.groupby(['PersonnelBaseId',
@@ -232,6 +249,21 @@ def calc_prs_const (individual, meta_data):
     cost = np.sum(df['diff_norm']) / len(df)
 #    print('cost: ' + str(cost))
     return cost 
+#------------------------ Objective prs_req function for prs req -------------# 
+def calc_prs_req_cost (individual,meta_data):  
+    df = individual     
+    df['Assigned'] = 1
+    df_req = meta_data.merge(df,  
+                             left_on =['PersonnelBaseId','Day','ShiftTypeID'],
+                             right_on=['PersonnelBaseId','Day','ShiftTypeID'],
+                             how='left'
+                            )
+    df_req = df_req.fillna(-1)
+    
+    df_req['cost'] = df_req['Assigned']*df_req['Value']
+
+    return 0
+
 # ----------------------- fitness all ----------------------------------------#
 def fitness (individual, meta_data):
     sht = shift_df.reset_index()
@@ -255,13 +287,14 @@ def fitness (individual, meta_data):
     df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
     day_const = 0.8*calc_day_const(df, typid_req_day)
     prs_const = 0.2*calc_prs_const(df, diff_req_rec)
+    prs_req_cost = calc_prs_req_cost(df, prs_req_df)
     cost = day_const + prs_const
     return cost
 # -----------------------Define GA--------------------------------------------#        
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
                           population_size=50,
-                          generations=1000,
+                          generations=200,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
                           elitism=True,

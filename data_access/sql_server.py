@@ -10,7 +10,8 @@ class data(object):
                  query_gene_new,
                  query_personnel,
                  query_shift,
-                 query_shift_req
+                 query_shift_req,
+                 query_prs_req
                  ):
         # -------------------- Connection String -----------------------------#
         self.conn_str = conn_str
@@ -23,7 +24,9 @@ class data(object):
         # -------------------Query for shift info-----------------------------#
         self.query_shift = query_shift  
         # -------------------Query for shift_req info-------------------------#
-        self.query_shift_req = query_shift_req        
+        self.query_shift_req = query_shift_req 
+        # -------------------Query for shift_req info-------------------------#
+        self.query_prs_req = query_prs_req 
         #---------------------------------------------------------------------#         
         self.cursor = self.sql_conn.cursor() 
         
@@ -52,6 +55,10 @@ class data(object):
     def get_day_req(self):
         day_req_df = pd.read_sql(self.query_shift_req,self.sql_conn)
         return day_req_df
+    
+    def get_prs_req(self):
+        query_prs_req = pd.read_sql(self.query_prs_req,self.sql_conn)
+        return query_prs_req
         
     def delete_last_sol(self,work_sction_id,year_working_period):
         cursor = self.cursor
@@ -85,15 +92,16 @@ class data(object):
                           SET [Rank] = T.[Rank]
                           FROM [PersonnelShiftDateAssignments] JOIN
                         	 (SELECT distinct
-                        		   ROW_NUMBER() over(order by [Cost]) [Rank]
+                        		   ROW_NUMBER() over(order by [Cost],[EndTime]) [Rank]
                         		  ,[Cost]      
                         		  ,[WorkSectionId]
                         		  ,[YearWorkingPeriod]
                         	  FROM [PersonnelShiftDateAssignments]
-                        	  WHERE WorkSectionId = {0} 
-                                    AND YearWorkingPeriod = {1}
+                        	  WHERE WorkSectionId = {0}
+                                    AND YearWorkingPeriod = {1}	
                         	  GROUP BY
                         		   [Cost]      
+								  ,[EndTime]
                         		  ,[WorkSectionId]
                         		  ,[YearWorkingPeriod]
                         	) T ON 
@@ -101,7 +109,8 @@ class data(object):
                             t.YearWorkingPeriod AND
                             [PersonnelShiftDateAssignments].WorkSectionId = 
                             t.WorkSectionId AND
-                            [PersonnelShiftDateAssignments].Cost = t.Cost                           
+                            [PersonnelShiftDateAssignments].Cost = t.Cost AND
+                            [PersonnelShiftDateAssignments].EndTime = t.EndTime                          
                        '''.format(work_sction_id,year_working_period))            
 # =============================================================================
 #         for prs in personnel_df.index:
