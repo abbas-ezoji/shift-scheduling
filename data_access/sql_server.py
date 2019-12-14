@@ -88,30 +88,7 @@ class data(object):
                                 AND RANK = {2}                          
                        '''.format(work_sction_id,year_working_period,rank))            
         #---------------- update Rank of last solutions ----------------------#
-        cursor.execute('''UPDATE [PersonnelShiftDateAssignments]
-                          SET [Rank] = T.[Rank]
-                          FROM [PersonnelShiftDateAssignments] JOIN
-                        	 (SELECT distinct
-                        		   ROW_NUMBER() over(order by [Cost],[EndTime]) [Rank]
-                        		  ,[Cost] 
-                                  ,[EndTime]  
-                        		  ,[WorkSectionId]
-                        		  ,[YearWorkingPeriod]
-                        	  FROM [PersonnelShiftDateAssignments]
-                        	  WHERE WorkSectionId = {0}
-                                    AND YearWorkingPeriod = {1}	
-                        	  GROUP BY
-                        		   [Cost]      
-								  ,[EndTime]
-                        		  ,[WorkSectionId]
-                        		  ,[YearWorkingPeriod]
-                        	) T ON 
-                            [PersonnelShiftDateAssignments].YearWorkingPeriod = 
-                            t.YearWorkingPeriod AND
-                            [PersonnelShiftDateAssignments].WorkSectionId = 
-                            t.WorkSectionId AND
-                            [PersonnelShiftDateAssignments].Cost = t.Cost AND
-                            [PersonnelShiftDateAssignments].EndTime = t.EndTime                          
+        cursor.execute('''exec [dbo].[UpdateLastRanks] {0}, {1}                         
                        '''.format(work_sction_id,year_working_period))            
 # =============================================================================
 #         for prs in personnel_df.index:
