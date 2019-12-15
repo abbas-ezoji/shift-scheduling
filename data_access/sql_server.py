@@ -80,7 +80,7 @@ class data(object):
                                ,(sol_tbl[i])
                                )  
         #---------------- update UsedParentCount of parent solution ----------#
-        cursor.execute('''exec [dbo].[UpdateUsedParentCount] {0}, {1} , {2}
+        cursor.execute('''exec [dbo].[UpdateUsedParentCount] {0}, {1}, {2}
                        '''.format(work_sction_id,year_working_period,rank))            
         #---------------- update Rank of last solutions ----------------------#
         cursor.execute('''exec [dbo].[UpdateLastRanks] {0}, {1}                         

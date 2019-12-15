@@ -17,19 +17,7 @@ from six.moves import range
 class GeneticAlgorithm(object):
     """Genetic Algorithm class.
     This is the main class that controls the functionality of the Genetic
-    Algorithm.
-    A simple example of usage:
-    >>> # Select only two items from the list and maximise profit
-    >>> from pyeasyga.pyeasyga import GeneticAlgorithm
-    >>> input_data = [('pear', 50), ('apple', 35), ('banana', 40)]
-    >>> easyga = GeneticAlgorithm(input_data)
-    >>> def fitness (member, data):
-    >>>     return sum([profit for (selected, (fruit, profit)) in
-    >>>                 zip(member, data) if selected and
-    >>>                 member.count(1) == 2])
-    >>> easyga.fitness_function = fitness
-    >>> easyga.run()
-    >>> print easyga.best_individual()
+    Algorithm over 2 dim matrics.    
     """
 
     def __init__(self,
@@ -43,15 +31,7 @@ class GeneticAlgorithm(object):
                  by_parent=False,
                  maximise_fitness=True,
                  initial_elit_prob=0.5,
-                 initial_random_prob=0.5):
-        """Instantiate the Genetic Algorithm.
-        :param seed_data: input data to the Genetic Algorithm
-        :type seed_data: list of objects
-        :param int population_size: size of population
-        :param int generations: number of generations to evolve
-        :param float crossover_probability: probability of crossover operation
-        :param float mutation_probability: probability of mutation operation
-        """
+                 initial_random_prob=0.5):       
 
         self.seed_data = seed_data
         self.meta_data = meta_data

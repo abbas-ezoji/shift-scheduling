@@ -63,8 +63,7 @@ query_gene_new = '''SELECT
                         Personnel P JOIN
                         Dim_Date D ON D.PersianYear = {0} 
                         AND PersianMonth={1} and WorkSectionId = {2}
-                  '''.format(PersianYear, PersianMonth, work_sction_id)
-                  
+                  '''.format(PersianYear, PersianMonth, work_sction_id)                  
 
 query_personnel = '''SELECT  [PersonnelBaseId]
 							,[WorkSectionId]
@@ -279,8 +278,7 @@ def fitness (individual, meta_data):
                  id_vars=['PersonnelBaseId',
                           'prs_typ_id',
                           'EfficiencyRolePoint',
-                          'RequirementWorkMins_esti',
-                          
+                          'RequirementWorkMins_esti',                          
                          ],
                  var_name='Day', 
                  value_name='ShiftCode')
