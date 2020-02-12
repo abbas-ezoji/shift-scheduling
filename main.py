@@ -14,8 +14,8 @@ from time import strftime, gmtime
 from libs.get_random import get_best_first_rank as get_rank
 
 def prs_day_alg(work_sction_id, year_working_period):
-    work_sction_id = 1
-    year_working_period = 139806
+#    work_sction_id = 1
+#    year_working_period = 139806
     
     PersianYear  = int(year_working_period / 100)
     PersianMonth = int(year_working_period % 100)
@@ -385,7 +385,7 @@ def prs_day_alg(work_sction_id, year_working_period):
     cons_day.sort_index(axis=0, level=[0,1,2], ascending=True, inplace=True)
     
 if __name__ == "__main__":
-    work_sction_id = 1 #int(sys.argv[1])
-    year_working_period = 139806#int(sys.argv[2])
+    work_sction_id = int(sys.argv[1])
+    year_working_period = int(sys.argv[2])
     prs_day_alg(work_sction_id=work_sction_id,
                 year_working_period=year_working_period)

@@ -20,7 +20,7 @@ PersianYear  = int(year_working_period / 100)
 PersianMonth = int(year_working_period % 100)
 # ----------------------- get data -------------------------------------------#
 conn_str = '''DRIVER={SQL Server Native Client 11.0};
-             SERVER=172.16.47.154;
+             SERVER=.;
              DATABASE=Didgah_Timekeeper_DM;
              Integrated_Security=false;
              Trusted_Connection=yes;
@@ -39,10 +39,10 @@ query_gene_last = '''SELECT DISTINCT
                      WHERE WorkSectionId = {0} AND YearWorkingPeriod = {1}                                
                    '''.format(work_sction_id,year_working_period)                        
 parent_rank = get_rank(conn_str, query_gene_last)
-by_parent = True 
+by_parent = False
 query_gene_last ='''SELECT S.[PersonnelBaseId]                 
                           ,S.[YearWorkingPeriod]
-                          ,S.[Day]      
+                          ,S.[Day]  
                       	  ,ShiftId as ShiftCode 
                     FROM 
                     	[PersonnelShiftDateAssignments] S
@@ -270,7 +270,8 @@ def fitness (individual, meta_data):
     sht_2['Length'] = sht_2['Length'] // 2
     sht_2['ShiftTypeID'] = sht_2['ShiftTypeID'] // 10
     sht_2.index = [7,8,9]
-    sht['Length'] = sht['Length'] // 2
+    sht_len = sht[sht['ShiftCode']>10]['Length'] // 2
+    sht.update(sht_len)
     sht['ShiftTypeID'] = sht['ShiftTypeID'] % 10
     sht = sht.append(sht_2)
     #sht[sht['ShiftCode']>10]
@@ -291,7 +292,7 @@ def fitness (individual, meta_data):
 # -----------------------Define GA--------------------------------------------#        
 ga = GA_dataframes.GeneticAlgorithm( seed_data=chromosom_df,
                           meta_data=shift_df,
-                          population_size=50,
+                          population_size=60,
                           generations=200,
                           crossover_probability=0.8,
                           mutation_probability=0.2,
@@ -326,18 +327,19 @@ sol_tbl = sol_tbl.drop(columns=['prs_typ_id',
                                 'RequirementWorkMins_esti'])
 sol_tbl = sol_tbl.values.tolist()
 # ----------------------- inserting ------------------------------------------# 
-#db.delete_last_sol(work_sction_id,year_working_period)
+
 db.insert_sol(sol_tbl, personnel_df, 
               sol_fitness,work_sction_id,year_working_period,
               parent_rank)
 #-------------------- output show --------------------------------------------#
-#########################################################
+########################################################
 sht = shift_df.reset_index()
 sht_2 = sht[sht['ShiftCode']>10]
 sht_2['Length'] = sht_2['Length'] // 2
 sht_2['ShiftTypeID'] = sht_2['ShiftTypeID'] // 10
 sht_2.index = [7,8,9]
-sht['Length'] = sht['Length'] // 2
+sht_len = sht[sht['ShiftCode']>10]['Length'] // 2
+sht.update(sht_len)
 sht['ShiftTypeID'] = sht['ShiftTypeID'] % 10
 sht = sht.append(sht_2)
 df = pd.melt(sol_df.reset_index(), 
@@ -350,7 +352,7 @@ df = pd.melt(sol_df.reset_index(),
              var_name='Day', 
              value_name='ShiftCode')
 df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
-#######################################################
+#########################################################
 cons_prs = df.groupby(['PersonnelBaseId',
                       'prs_typ_id',
                       'EfficiencyRolePoint',
@@ -360,8 +362,7 @@ cons_prs = df.groupby(['PersonnelBaseId',
                                             'EndTime', 'ShiftTypeID'])
 cons_prs = cons_prs.reset_index(level=3)
 cons_prs['diff'] = (cons_prs['RequirementWorkMins_esti'] - cons_prs['Length'])
-#########################################################3
-
+#########################################################
 cons_day = df[df['Length']>0].groupby(['Day',
                                        'prs_typ_id',
                                        'ShiftTypeID']).agg(
