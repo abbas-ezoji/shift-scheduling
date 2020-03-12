@@ -1,117 +1,55 @@
+import requests
+from bs4 import BeautifulSoup
 import pandas as pd
-import numpy as np
-import pyodbc
-
-conn_str = '''DRIVER={SQL Server Native Client 11.0};
-             SERVER=.;
-             DATABASE=Didgah_Timekeeper_DM;
-             Integrated_Security=false;
-             Trusted_Connection=yes;
-             UID=sa;
-             PWD=1qaz!QAZ
-          '''
-
-sql_conn = pyodbc.connect(conn_str)
-query = '''SELECT [PersonnelBaseId]
-                  ,[YearWorkingPeriod]
-                  ,[WorkSectionId]
-                  ,[Day]
-                  ,[ShiftTypeID]
-                  ,[Value]
-          FROM [PersonnelRequest]
-          WHERE [WorkSectionId] = 1 and [YearWorkingPeriod] = 139806
-          ORDER BY[PersonnelBaseId]
-                  ,[YearWorkingPeriod]
-                  ,[Day]
-                  ,[ShiftTypeID]
-        '''
-
-query_gene_last ='''SELECT S.[PersonnelBaseId]                 
-                          ,S.[YearWorkingPeriod]
-                          ,S.[Day]      
-                      	  ,ShiftId as ShiftCode 
-                    FROM 
-                    	[PersonnelShiftDateAssignments] S
-                    WHERE                           	
-                        WorkSectionId = 1                     
-                        AND S.YearWorkingPeriod = 139806
-                        AND S.RANK = 1
-                 '''
-query_shift = '''SELECT [id] as ShiftCode
-					 ,[Title]
-					 ,[Length]
-					 ,[StartTime]
-					 ,[EndTime]
-					 ,[Type] ShiftTypeID
-                FROM [Shifts]
-			 '''   
-query_personnel = '''SELECT  [PersonnelBaseId]
-							,[WorkSectionId]
-							,[YearWorkingPeriod]
-							,[RequirementWorkMins_esti]
-							,[RequirementWorkMins_real]
-							,[TypeId] prs_typ_id
-							,[EfficiencyRolePoint]
-                            ,[DiffNorm]
-                    FROM [Personnel]
-                    WHERE WorkSectionId = 1 AND YearWorkingPeriod = 139806
-                  '''             
-             
-prs_req = pd.read_sql(query,sql_conn)
-chromosom_df = pd.read_sql(query_gene_last,sql_conn)
-personnel_df = pd.read_sql(query_personnel, sql_conn)
-shift_df = pd.read_sql(query_shift , sql_conn)
-
-chromosom_df = chromosom_df.merge(personnel_df, 
-                                  left_on='PersonnelBaseId', 
-                                  right_on='PersonnelBaseId', 
-                                  how='inner')
-chromosom_df = pd.pivot_table(chromosom_df, values='ShiftCode', 
-                              index=['PersonnelBaseId',
-                                      'prs_typ_id',
-                                      'EfficiencyRolePoint',
-                                      'RequirementWorkMins_esti'                                                                           
-                                    ],
-                              columns=['Day'], aggfunc=np.sum)
-
-
-#--------------------------------------------------------------------
-sht = shift_df.reset_index()
-sht_2 = sht[sht['ShiftCode']>10]
-sht_2['Length'] = sht_2['Length'] // 2
-sht_2['ShiftTypeID'] = sht_2['ShiftTypeID'] // 10
-sht_2.index = [7,8,9]
-sht['Length'] = sht['Length'] // 2
-sht['ShiftTypeID'] = sht['ShiftTypeID'] % 10
-sht = sht.append(sht_2)
-df = pd.melt(chromosom_df.reset_index(), 
-             id_vars=['PersonnelBaseId',
-                      'prs_typ_id',
-                      'EfficiencyRolePoint',
-                      'RequirementWorkMins_esti',
-                     
-                     ],
-             var_name='Day', 
-             value_name='ShiftCode')
-df = df.merge(sht, left_on='ShiftCode', right_on='ShiftCode', how='inner')
-#-------------------------------------
-df['Assigned'] = 1
-df_req = prs_req.merge(df, 
-                       left_on =['PersonnelBaseId','Day','ShiftTypeID'],
-                       right_on=['PersonnelBaseId','Day','ShiftTypeID'],
-                       how='left'
-                      )
-df_req = df_req.fillna(-1)
-
-df_req['cost'] = df_req['Assigned']*df_req['Value']
 
 
 
 
+class scrapy(object):
+    def __init__(self,
+                 url='http://tik8.com/category/',
+                 elems_class='card_banner card'
+                 ):
+        self.url = url
+        self.elems_class = elems_class
+        page = requests.get(self.url)
 
+        soup = BeautifulSoup(page.content, 'html.parser')
 
+        self.elems = soup.find_all('div', class_=elems_class)
 
+    def get_data(self):
+        server_url = self.url
+        api_url = self.url
+        api_list = ['theater', 'concert', 'cinema', 'kid', 'conference',
+                    'entertainment', 'Cultural-Heritage', 'escape-room']
+        data = []
+        for url in api_list:
+            event_type = url
+            url = api_url + url
+            print(event_type, url)
+            page = requests.get(url)
+            soup = BeautifulSoup(page.content, 'html.parser')
+            elems = soup.find_all('div', class_='card_banner card')
+            #################################################################
+            headers = ['event_type', 'details_api', 'title', 'location', 'image']
+            for elem in elems:
+                details_api = elem.find('a', class_='card_banner-box-hover__link-main')
+                title = elem.find('img', class_='card_poster2')
+                location = elem.find('span')
 
+                if None in details_api:
+                    continue
+                details_api = server_url + str(details_api['href'])
+                image = title['src']
+                title = title['alt']
+                location = location.text.strip()
+                data.append([event_type, details_api, title, location, image])
 
+        return pd.DataFrame(data, columns=headers)
+    def run(self):
+        self.get_data()
 
- 
+s= scrapy()
+data = s.get_data()
+        
