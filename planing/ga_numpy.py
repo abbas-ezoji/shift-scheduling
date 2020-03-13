@@ -134,6 +134,8 @@ class GeneticAlgorithm(object):
             rowt = random.randrange(1, row - 1 if row>2 else row)
             #print(rowt)
             child[rowt, 0] ,child[row-1, 0] = child[row-1, 0], child[rowt, 0]
+            _, child = npi.group_by(child[:,0]).min(child)
+            
             return child
         
         def create_individual(data,meta_data):  
@@ -144,8 +146,12 @@ class GeneticAlgorithm(object):
             points = meta_data[0]
             rq_time = meta_data[1]
             #print(data.shape)
-            individual[:, 0] = np.random.choice(points, size=len(individual)).T
-            individual[:, 1] = np.random.choice(rq_time, size=len(individual)).T
+            individual[:, 0] = np.random.choice(points, 
+                                                size=len(individual),
+                                                replace=False).T
+            individual[:, 1] = np.random.choice(rq_time, 
+                                                size=len(individual),
+                                                replace=False).T
             return individual
         
         def create_individual_local_search(data,meta_data): 
@@ -161,7 +167,7 @@ class GeneticAlgorithm(object):
             elif p < 0.75:
                 individual    = mutate(individual, meta_data)          
             else:
-                individual    = add_swap(individual)				
+                individual    = add_swap(individual, meta_data)				
             return individual
         
         def random_selection(population):
@@ -192,7 +198,7 @@ class GeneticAlgorithm(object):
         self.tournament_selection = tournament_selection
         self.tournament_size = self.population_size // 10
         self.random_selection = random_selection
-        self.create_individual = create_individual
+        self.create_individual = create_individual_local_search
         self.single_crossover_function = single_crossover
         self.double_crossover_function = double_crossover        
         self.mutate_function = mutate
@@ -203,8 +209,9 @@ class GeneticAlgorithm(object):
         """Create members of the first population randomly.
         """
         initial_population = []
-        individual = Chromosome(self.seed_data)
+        individual = Chromosome(self.seed_data)        
         parent = copy.deepcopy(individual)
+        
                
         for i in range(self.population_size):
             genes = self.create_individual(self.seed_data,self.meta_data)                     
@@ -243,7 +250,8 @@ class GeneticAlgorithm(object):
         new_population = []
         elite = copy.deepcopy(self.current_generation[0])
         selection = self.selection_function
-
+        
+        t= self.current_generation
         while len(new_population) < self.population_size:
             parent_1 = copy.deepcopy(selection(self.current_generation))
             parent_2 = copy.deepcopy(selection(self.current_generation))
@@ -369,8 +377,9 @@ class GeneticAlgorithm(object):
         """Return the individual with the best fitness in the current
         generation.
         """
-        best = self.current_generation[0]        
-        return (best.fitness, best.genes)
+        best = self.current_generation[0] 
+        _, gene = npi.group_by(best.genes[:,0]).max(best.genes)
+        return (best.fitness, gene)
 
     def last_generation(self):
         """Return members of the last generation as a generator function."""
@@ -394,6 +403,10 @@ class Chromosome(object):
         self.mutate_count = 0
         self.add_swap_count = 0
         self.elit = 0
+        
+    def get_genes(self):
+        
+        return self.genes
 
     def __repr__(self):
         """Return initialised Chromosome representation in human readable form.
