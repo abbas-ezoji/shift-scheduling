@@ -2,29 +2,23 @@ import pandas as pd
 import numpy as np
 from ga_numpy import GeneticAlgorithm as ga
 import numpy_indexed as npi
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import create_engine
 
-
-
-data = pd.read_excel('attractions2.xlsx')
-df = data
-#df['province'] = ''; df['city'] = ''; 
-#
-#for i, s in zip(df.index,df['description']):    
-#    describ = df.iloc[[i]]['description']
-#    rq_time = str(df.iloc[[i]]['requiredTime'])
-#    
-#    describ = np.array(describ)    
-#    describ_arr = describ[0].strip().split('/')
-#    rq_time = rq_time.strip().split(' ')
-#    
-#    country = describ_arr[0] if len(describ_arr)>0 else ''
-#    province = describ_arr[1] if len(describ_arr)>1 else ''
-#    city = describ_arr[2] if len(describ_arr)>2 else ''
-#    df.ix[i,10] = rq_time[4]
-#    df.ix[i,14] = province
-#    df.ix[i,15] = city.split(' ')[0].replace('\n','')
-#
-#df.to_excel('attractions2.xlsx')
+USER = 'planuser'
+PASSWORD = '1qaz!QAZ'
+HOST = 'localhost'
+PORT = '5432'
+NAME = 'planing'
+db_connection = "postgresql://{}:{}@{}:{}/{}".format(USER,
+                                                         PASSWORD,
+                                                         HOST,
+                                                         PORT,
+                                                         NAME
+                                                        )
+engine = create_engine(db_connection)
+df = pd.read_sql_query('SELECT * FROM	plan_attractions',con=engine)
+df = df.drop(['image'], axis=1)
     
 df_kelar = df[df['city']=='کلاردشت']
 
@@ -36,10 +30,10 @@ dist_mat = pd.pivot_table(dist_df,
                           values='len', 
                           aggfunc=np.sum)
 
-vst_time_from = df_kelar['visitingTimeFrom'] 
-vst_time_to = df_kelar['visitingTimeTo']
+vst_time_from = df_kelar['vis_time_from'] 
+vst_time_to = df_kelar['vis_time_to']
 points = df_kelar['id']
-rq_time = df_kelar['requiredTime']
+rq_time = df_kelar['rq_time']
 
 meta_data = [points, rq_time]
 
