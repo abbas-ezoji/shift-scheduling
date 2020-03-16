@@ -250,8 +250,7 @@ class GeneticAlgorithm(object):
         new_population = []
         elite = copy.deepcopy(self.current_generation[0])
         selection = self.selection_function
-        
-        t= self.current_generation
+                
         while len(new_population) < self.population_size:
             parent_1 = copy.deepcopy(selection(self.current_generation))
             parent_2 = copy.deepcopy(selection(self.current_generation))

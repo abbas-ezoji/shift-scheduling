@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
 from ga_numpy import GeneticAlgorithm as ga
@@ -11,9 +12,10 @@ city = 24 #  'استانبول'
 start_time = 480
 end_time = 1260
 
-alpha = 0.8
-beta = 0.2
-gama = 0.0
+coh_fultm = 0.8
+coh_lntm  = 0.0
+coh_cnt   = 0.2
+coh_dffRqTime  = 0.0
 ##############################
 
 USER = 'planuser'
@@ -68,7 +70,7 @@ pln_gene2 = np.array([np.flip(points),
                       np.flip(rq_time), 
                      ], dtype=int).T						  
 							  
-def fulltime_cost(individual, meta_data):
+def cost_fulltime(individual, meta_data):
     plan = individual
     len_pln = len(plan)
     edge = len_pln - 1   
@@ -79,11 +81,16 @@ def fulltime_cost(individual, meta_data):
         if i<edge:
             all_dist += dist_mat.loc[orig , pln_pnt[i+1]]
     plan_lenght = all_dist + all_duration  
-    cost = np.abs((start_time + plan_lenght) - end_time) / 1440.0    
+    cost = np.abs((start_time + plan_lenght) - end_time) / 1440.0     
+      
+    return cost
+
+def cost_lentime(individual, all_dist, all_duration ):         
+    cost = all_dist / (all_duration + all_dist)
       
     return cost
 	
-def count_cost(individual, meta_data):
+def cost_count(individual, meta_data):
     plan = individual
     len_pln = len(plan)
     len_points = len(meta_data[0])
@@ -91,7 +98,7 @@ def count_cost(individual, meta_data):
     
     return cost
 
-def rqTime_cost(individual, meta_data):
+def cost_rqTime(individual, meta_data):
     plan = individual
    
     t = np.concatenate((plan, meta_data.T))
@@ -104,11 +111,28 @@ def rqTime_cost(individual, meta_data):
 
 def fitness(individual, meta_data):    
     _, individual = npi.group_by(individual[:,0]).max(individual)
-    fultm_cost = fulltime_cost(individual, meta_data)
-    cnt_cost = count_cost(individual, meta_data)
-    diff_rqTime_cost = rqTime_cost(individual, meta_data)
+    
+    len_pln = len(individual)
+    edge = len_pln - 1   
+    pln_pnt = individual[:,0]
+    len_points = len(points)
+    all_duration = np.sum(individual[:,1])
+    all_dist = 0
+    for i,orig in enumerate(pln_pnt):    
+        if i<edge:
+            all_dist += dist_mat.loc[orig , pln_pnt[i+1]]
+    
+
+    cost_fultm = cost_fulltime(individual, meta_data)
+    cost_lntm  = cost_lentime(individual, all_dist, all_duration)
+    cost_cnt   = cost_count(individual, meta_data)
+    cost_diff_rqTime = cost_rqTime(individual, meta_data)
 #    print(len_cost, cnt_cost, diff_rqTime_cost)
-    cost = (alpha*fultm_cost) + (beta*cnt_cost) + (gama*diff_rqTime_cost)
+    cost =((coh_fultm*cost_fultm) + 
+           (coh_lntm*cost_lntm) + 
+           (coh_cnt*cost_cnt) + 
+           (coh_dffRqTime*cost_diff_rqTime)
+           )
 #    print(cost)
     
     return cost
@@ -141,11 +165,20 @@ def lenght(individual, meta_data):
     
     return all_duration + all_dist
 
-cost_len = fulltime_cost(sol_df, meta_data)
-cost_cnt = count_cost(sol_df, meta_data)
-cost_diff_rqTime = rqTime_cost(sol_df, meta_data)
-all_lenght = lenght(sol_df, meta_data)
+len_pln = len(sol_df)
+edge = len_pln - 1   
+pln_pnt = sol_df[:,0]
+len_points = len(points)
+all_duration = np.sum(sol_df[:,1])
+all_dist = lenght(sol_df, meta_data)
+all_lenght = all_dist + all_duration
+    
+cost_fultm = cost_fulltime(sol_df, meta_data)
+cost_lntm  = cost_lentime(sol_df, all_dist, all_duration)
+cost_cnt   = cost_count(sol_df, meta_data)
+cost_diff_rqTime = cost_rqTime(sol_df, meta_data)
 diff_full_time = (start_time + all_lenght) - end_time
+
 
 
 
